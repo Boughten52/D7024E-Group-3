@@ -10,28 +10,28 @@
 #
 # $ docker build . -t kadlab
 
-FROM ubuntu:20.04
+# Install a small os
+FROM alpine:latest
 
 # Install necessary packages
-RUN apt-get update && \
-    apt-get install -y \
-    build-essential \
-    golang-go
+RUN apk add --no-cache iputils
+RUN apk add --no-cache bash
 
 # Use the official Go image as the base image
-FROM golang:latest
+#FROM golang:latest
 
 # Set the working directory inside the container
-WORKDIR /app
+#WORKDIR /app
 
 # Copy the go.mod file to the container
-COPY go.mod .
+#COPY go.mod .
 
-# Copy the source code from the host into the container
-COPY src/ .
+# Copy the main file from the host into the container. We only need the main file now when we are testing
+#COPY src/main.go .
 
 # Build the Go executable
-RUN go build -o myapp .
+#RUN go build -o app
 
 # Specify the command to run when the container starts
-CMD ["./myapp"]
+#CMD ["./app"]
+CMD bash

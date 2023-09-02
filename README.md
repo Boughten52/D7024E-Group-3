@@ -27,22 +27,20 @@ ping <node-name>
 # Deploy to DUST VM
 In the future, we would like this process to be automatic by running a script or similar, but we will do it manually until we have figured out the best deployment procedure.
 
-## Deploy the image
-First, export the Docker image as a tarball file:
+## Deploy the source code
+Note that all code on the server can be edited using editors such as Vim, but this is bad practice in our case since we don't have any backups of the server. Thus, all code should be edited locally and commited to GitHub, and then deployed to the server using the method described below.
+
+We copy the directory (D7024E-Group-3) containing the source code to the server by using SCP (note that we place the directory in /home/martinaskolin, which is the directory you land in when logging in):
 ```
-docker save -o kadlab_image.tar kadlab
+scp -r -P 27001 PATH_TO_DIRECTORY\D7024E-Group-3\ martinaskolin@130.240.207.20:/home/martinaskolin/
 ```
-Copy the tarball file to your remote server using SCP (Secure Copy) and then enter the password:
+
+## Build the image (Dockerfile)
+Note that the Docker image only has to be rebuilt if the Dockerfile has changed.
+
+To rebuild an image, go to the D7024E-Group-3 directory on the server and run:
 ```
-scp -P 27001 kadlab_image.tar martinaskolin@130.240.207.20:/home/martinaskolin/
-```
-SSH to the server, which will place you in the /home/martinaskolin directory:
-```
-ssh -p 27001 martinaskolin@130.240.207.20
-```
-Finally, import the Docker image on the remote server:
-```
-sudo docker load -i kadlab_image.tar
+sudo docker build . -t kadlab
 ```
 You can check the status of all images by running:
 ```
@@ -52,25 +50,29 @@ To delete the image, run:
 ```
 sudo docker image rm kadlab
 ```
-
-## Deploy the source code
-All source code must be present on the VM in order for us to run it. Add the directory containing the source code to the server by using SCP:
+If there containers running that need to be updated with the latest image, run:
 ```
-scp -r -P 27001 .\D7024E-Group-3\ martinaskolin@130.240.207.20:/home/martinaskolin/
+sudo docker service update --image kadlab:latest STACKNAME_kademliaNodes
 ```
 
-## Deploy Docker stack
-To start our network of replicas, we need to deploy a stack from the docker-compose.yml file.
+## Deploy Docker stack (docker-compose.yml)
+This section refers to starting a Swarm and stack for the first time. If a Swarm and stack is already running, and you have made changes to the docker-compose.yml file that you want to deploy, ignore the rest of this section and simply run the following command in the D7024E-Group-3 directory on the server:
+```
+sudo docker stack deploy -c docker-compose.yml STACKNAME
+```
+If you instead want to start a Swarm and stack, follow the steps below:
 
-This first requires that a Swarm is running and that the current node is a Swarm manager, which is initialized with:
+To start a network of replicas, we need to deploy a stack from the docker-compose.yml file.
+
+The first step to deploying a stack requires that a Swarm is running and that the current node is a Swarm manager, which is initialized with:
 ```
 sudo docker swarm init
 ```
-To then list all nodes in a swarm, run:
+You can check the status by listing all nodes in a Swarm:
 ```
 sudo docker node ls
 ```
-Enter the directory /home/martinaskolin/D7024E-Group-3 which contains the docker-compose.yml file, and deploy the stack by running:
+The, enter the directory /home/martinaskolin/D7024E-Group-3 which contains the docker-compose.yml file, and deploy the stack by running:
 ```
 sudo docker stack deploy -c docker-compose.yml STACKNAME
 ```

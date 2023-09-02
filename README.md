@@ -9,11 +9,11 @@ Build the Docker image by running this in a terminal in the D7024E-Group-3 proje
 ```
 docker build . -t kadlab
 ```
-Start the network of containers by running:
+Start the network of containers:
 ```
 docker-compose up -d   
 ```
-Enter the shell environment of any node by typing:
+Enter the shell environment of any node by running:
 ```
 docker exec -it <node-name> sh
 ```
@@ -25,7 +25,7 @@ ping <node-name>
 ```
 
 # Deploy to DUST VM
-In the future, we would like this process to be automatic by running a script or similar, but we will do it manually until we have figured out the best deployment procedure.
+In the future, we would like the procedure of deploying to the DUST VM to be automatic by running a script or similar, but we will do it manually until we have figured out a good way to do it.
 
 ## Deploy the source code
 Note that all code on the server can be edited using editors such as Vim, but this is bad practice in our case since we don't have any backups of the server. Thus, all code should be edited locally and commited to GitHub, and then deployed to the server using the method described below.
@@ -33,6 +33,10 @@ Note that all code on the server can be edited using editors such as Vim, but th
 We copy the directory (D7024E-Group-3) containing the source code to the server by using SCP (note that we place the directory in /home/martinaskolin, which is the directory you land in when logging in):
 ```
 scp -r -P 27001 PATH_TO_DIRECTORY\D7024E-Group-3\ martinaskolin@130.240.207.20:/home/martinaskolin/
+```
+The server is then reached via:
+```
+ssh -p 27001 martinaskolin@130.240.207.20
 ```
 
 ## Build the image (Dockerfile)
@@ -50,7 +54,7 @@ To delete the image, run:
 ```
 sudo docker image rm kadlab
 ```
-If there containers running that need to be updated with the latest image, run:
+If there are containers in the stack that need to be updated with the latest image, run:
 ```
 sudo docker service update --image kadlab:latest STACKNAME_kademliaNodes
 ```
@@ -72,7 +76,7 @@ You can check the status by listing all nodes in a Swarm:
 ```
 sudo docker node ls
 ```
-The, enter the directory /home/martinaskolin/D7024E-Group-3 which contains the docker-compose.yml file, and deploy the stack by running:
+Then, enter the directory /home/martinaskolin/D7024E-Group-3 which contains the docker-compose.yml file, and deploy the stack by running:
 ```
 sudo docker stack deploy -c docker-compose.yml STACKNAME
 ```
@@ -96,7 +100,7 @@ sudo docker network rm NETWORKNAME
 ```
 
 ## Enter a container
-To enter containers like we do when running locally, we first need to figure out their names or ID:s. We do that by entering:
+To enter containers like we do when running locally, we first need to figure out their names or ID:s. We do that by running this command:
 ```
 sudo docker container ls
 ```

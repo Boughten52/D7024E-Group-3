@@ -1,18 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"os"
+	"d7024e/cli"
 )
 
 func main() {
-	fmt.Println("Started node")
+	// TODO: Implement the Kademlia network
 
-	// Block the main goroutine by waiting for input (just so the node won't exit)
-	fmt.Println("Press Enter to exit...")
-	_, err := os.Stdin.Read([]byte{0})
-	if err != nil {
-		fmt.Println("Error reading input:", err)
-		return
-	}
+	cli.StartCLI()
 }

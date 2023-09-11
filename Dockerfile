@@ -18,20 +18,16 @@ RUN apk add --no-cache iputils
 RUN apk add --no-cache bash
 
 # Use the official Go image as the base image
-#FROM golang:latest
+FROM golang:latest
 
 # Set the working directory inside the container
-#WORKDIR /app
+WORKDIR /app
 
-# Copy the go.mod file to the container
-#COPY go.mod .
+# Copy the source code from the host into the container
+COPY src .
 
-# Copy the main file from the host into the container. We only need the main file now when we are testing
-#COPY src/main.go .
+# Build the Go executable (we call it node-cli)
+RUN go build -o node-cli
 
-# Build the Go executable
-#RUN go build -o app
-
-# Specify the command to run when the container starts
-#CMD ["./app"]
+# We start a bash shell when the container starts
 CMD bash

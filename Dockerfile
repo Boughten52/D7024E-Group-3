@@ -10,24 +10,35 @@
 #
 # $ docker build . -t kadlab
 
-# Install a small os
-FROM alpine:latest
-
-# Install necessary packages
-RUN apk add --no-cache iputils
-RUN apk add --no-cache bash
-
 # Use the official Go image as the base image
 FROM golang:latest
 
 # Set the working directory inside the container
 WORKDIR /app
 
+# Install necessary packages
+RUN apt-get update && apt-get install -y iputils-ping tmux bash && apt-get clean
+
+# Add the directory where tmux is installed to the PATH
+ENV PATH="/usr/bin/tmux:${PATH}"
+
 # Copy the source code from the host into the container
 COPY src .
 
-# Build the Go executable (we call it node-cli)
-RUN go build -o node-cli
+# Set the working directory to be node-cli
+WORKDIR /app/cli
 
-# We start a bash shell when the container starts
-CMD bash
+# Build an executable for the node-cli
+RUN go build -o /app/node-cli
+
+# Set the working directory to be node-cli
+WORKDIR /app/kademlia
+
+# Build the Go executable for the Kademlia application
+RUN go build -o /app/kademlia-app
+
+# Reset the working directory to /app
+WORKDIR /app
+
+# Start a tmux session with the Kademlia application
+CMD ["tmux", "new-session", "-s", "kademlia-session", "./kademlia-app"]

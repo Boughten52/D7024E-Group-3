@@ -7,7 +7,7 @@ import (
 )
 
 type Kademlia struct {
-	ID          *big.Int
+	  ID          *big.Int
     DataStore   map[string]string
 }
 

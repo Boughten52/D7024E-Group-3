@@ -1,0 +1,52 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Install sshpass
+      run: sudo apt-get -y install sshpass
+
+    - name: SSH into Server and Execute Docker Commands
+      run: |
+        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -p 27001 martinaskolin@130.240.207.20 << EOF
+          cd D7024E-Group-3
+
+          # Step 1: Remove the Docker stack
+          sudo docker stack rm kademliaStack
+
+          # Step 2: Wait for containers to be removed
+          while [[ \$(sudo docker stack ps kademliaStack --no-trunc --format "{{.Node}}") != "" ]]; do
+            sleep 5
+          done
+
+          # Step 3: Remove the Docker image
+          sudo docker image rm kademlia
+
+          # Step 4: Wait for the image to be removed
+          while [[ \$(sudo docker images --quiet kadlab) != "" ]]; do
+            sleep 5
+          done
+
+          # Step 5: Build the new Docker image
+          sudo docker build . -t kadlab
+
+          # Step 6: Wait for the image to be built
+          while [[ \$(sudo docker images --quiet kadlab) == "" ]]; do
+            sleep 5
+          done
+
+          # Step 7: Deploy the Docker stack using the updated docker-compose.yml
+          sudo docker stack deploy -c docker-compose.yml kademliaStack
+        EOF
+      env:
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}

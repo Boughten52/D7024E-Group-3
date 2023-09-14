@@ -16,6 +16,14 @@ jobs:
     - name: Install sshpass
       run: sudo apt-get -y install sshpass
 
+    - name: SSH into Server and remove old code
+      run: |
+        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -v -P 27001 martinaskolin@130.240.207.20 << EOF
+          rm -r D7024E-Group-3
+        EOF
+      env:
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
     - name: Copy Code to Server
       run: |
         sshpass -p ${{ secrets.SSH_PASSWORD }} scp -o StrictHostKeyChecking=no -v -r -P 27001 $GITHUB_WORKSPACE/ martinaskolin@130.240.207.20:/home/martinaskolin/

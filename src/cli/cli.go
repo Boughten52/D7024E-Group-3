@@ -1,4 +1,4 @@
-package cli
+package main
 
 import (
 	"flag"
@@ -6,8 +6,8 @@ import (
 	"os"
 )
 
-// startCLI initializes the command-line interface
-func StartCLI() {
+// CallCLI handles a CLI command
+func CallCLI() {
 	// Define flags for command-line arguments
 	putCmd := flag.NewFlagSet("put", flag.ExitOnError)
 	getCmd := flag.NewFlagSet("get", flag.ExitOnError)

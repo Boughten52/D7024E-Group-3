@@ -30,7 +30,7 @@ jobs:
           done
 
           # Step 3: Remove the Docker image
-          sudo docker image rm kademlia
+          sudo docker image rm kadlab
 
           # Step 4: Wait for the image to be removed
           while [[ \$(sudo docker images --quiet kadlab) != "" ]]; do

@@ -18,8 +18,8 @@ jobs:
 
     - name: SSH into Server and remove old code
       run: |
-        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -v -P 27001 martinaskolin@130.240.207.20 << EOF
-          rm -r D7024E-Group-3
+        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -p 27001 martinaskolin@130.240.207.20 << EOF
+          sudo rm -r D7024E-Group-3
         EOF
       env:
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
@@ -32,7 +32,7 @@ jobs:
 
     - name: SSH into Server and Execute Docker Commands
       run: |
-        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -v -P 27001 martinaskolin@130.240.207.20 << EOF
+        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -v -p 27001 martinaskolin@130.240.207.20 << EOF
           cd D7024E-Group-3
 
           # Step 1: Remove the Docker stack

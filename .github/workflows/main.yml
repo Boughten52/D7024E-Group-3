@@ -16,12 +16,9 @@ jobs:
     - name: Install sshpass
       run: sudo apt-get -y install sshpass
 
-    - name: Print Current Directory
-      run: pwd
-
     - name: Copy Code to Server
       run: |
-        sshpass -p ${{ secrets.SSH_PASSWORD }} rsync -av -e scp -o StrictHostKeyChecking=no -v -r -P 27001 --exclude=".git" --exclude=".github" $GITHUB_WORKSPACE/ martinaskolin@130.240.207.20:/home/martinaskolin/
+        sshpass -p ${{ secrets.SSH_PASSWORD }} rsync --exclude=".git" --exclude=".github" -av -e scp -o StrictHostKeyChecking=no -v -r -P 27001 $GITHUB_WORKSPACE/ martinaskolin@130.240.207.20:/home/martinaskolin/
       env:
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 

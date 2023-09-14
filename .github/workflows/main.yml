@@ -18,13 +18,13 @@ jobs:
 
     - name: Copy Code to Server
       run: |
-        scp -r -p 27001 ./ martinaskolin@130.240.207.20:/home/martinaskolin/
+        scp -r -P 27001 ./ martinaskolin@130.240.207.20:/home/martinaskolin/
       env:
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
     - name: SSH into Server and Execute Docker Commands
       run: |
-        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -v -T -p 27001 martinaskolin@130.240.207.20 << EOF
+        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -v -T -P 27001 martinaskolin@130.240.207.20 << EOF
           cd D7024E-Group-3
 
           # Step 1: Remove the Docker stack

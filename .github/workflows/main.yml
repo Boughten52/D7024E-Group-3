@@ -18,7 +18,7 @@ jobs:
 
     - name: Copy Code to Server
       run: |
-        scp -r -P 27001 ./ martinaskolin@130.240.207.20:/home/martinaskolin/
+        scp -r -p ${{ secrets.SSH_PASSWORD }} -P 27001 ./ martinaskolin@130.240.207.20:/home/martinaskolin/
       env:
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 

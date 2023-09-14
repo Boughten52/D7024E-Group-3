@@ -24,7 +24,7 @@ jobs:
 
     - name: SSH into Server and Execute Docker Commands
       run: |
-        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -v -T -P 27001 martinaskolin@130.240.207.20 << EOF
+        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -v -P 27001 martinaskolin@130.240.207.20 << EOF
           cd D7024E-Group-3
 
           # Step 1: Remove the Docker stack

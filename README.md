@@ -109,3 +109,5 @@ We can then use either name or ID to enter a container:
 sudo docker exec -it <NAME/ID> sh
 ```
 From there we can use Unix commands and ping other containers in the network.
+
+We can also use the CLI created in Go (run `./node-cli` to see available commands).

@@ -26,13 +26,13 @@ jobs:
 
     - name: Copy Code to Server
       run: |
-        sshpass -p ${{ secrets.SSH_PASSWORD }} scp -o StrictHostKeyChecking=no -v -r -P 27001 $GITHUB_WORKSPACE/ martinaskolin@130.240.207.20:/home/martinaskolin/
+        sshpass -p ${{ secrets.SSH_PASSWORD }} scp -o StrictHostKeyChecking=no -r -P 27001 $GITHUB_WORKSPACE/ martinaskolin@130.240.207.20:/home/martinaskolin/
       env:
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
     - name: SSH into Server and Execute Docker Commands
       run: |
-        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -v -p 27001 martinaskolin@130.240.207.20 << EOF
+        sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -p 27001 martinaskolin@130.240.207.20 << EOF
           cd D7024E-Group-3
 
           # Step 1: Remove the Docker stack

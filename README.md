@@ -1,5 +1,5 @@
 # D7024E Group 3
-Repository for the distributed system in the course D7024E at Luleå University of Technology
+Repository for the distributed system in the course D7024E at Luleå University of Technology.
 
 # Prerequisites
 If you want to run the project locally it's required to download the latest versions of [Docker Desktop](https://www.docker.com/products/docker-desktop/) and [Go](https://go.dev/dl/) (we used go1.21.0). We recommend using VSCode for code editing, but any editor will work. In VSCode we can download extensions for Go, Docker and also Dev Containers which lets us use Docker containers as full-featured development environments.
@@ -25,7 +25,9 @@ ping <node-name>
 ```
 
 # Deploy to DUST VM
-In the future, we would like the procedure of deploying to the DUST VM to be automatic by running a script or similar, but we will do it manually until we have figured out a good way to do it.
+Please note that any pushes to `main`, either directly or via pull requests, will result in an automatic deployment to the DUST VM. The deployment is done by a GitHub Action, which builds the Docker image and deploys a Docker stack to the server. The Docker stack is defined in the `docker-compose.yml` file, and the stack is called `kademliaStack`. The stack contains a network called `kademliaStack_kademlia_network` and a service called `kademliaStack_kademliaNodes`. The service contains 50 replicas, which means that 50 containers will be created.
+
+Below follow instructions for how to manually deploy the source code, build the image and deploy the stack.
 
 ## Deploy the source code
 Note that all code on the server can be edited using editors such as Vim, but this is bad practice in our case since we don't have any backups of the server. Thus, all code should be edited locally and commited to GitHub, and then deployed to the server using the method described below.

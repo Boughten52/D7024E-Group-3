@@ -41,4 +41,5 @@ RUN go build -o /app/kademlia-app
 WORKDIR /app
 
 # Start a tmux session with the Kademlia application
-CMD ["tmux", "new-session", "-s", "kademlia-session", "./kademlia-app"]
+# CMD ["tmux", "new-session", "-s", "kademlia-session", "./kademlia-app"]
+CMD ["./kademlia-app"]

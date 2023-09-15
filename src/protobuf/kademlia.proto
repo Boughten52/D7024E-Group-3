@@ -1,0 +1,18 @@
+syntax = "proto3";
+option go_package = "../protobuf";
+package protobuf;
+
+message KademliaMessage {
+    int32 message_type = 1;
+    bytes data = 2;
+}
+
+message Ping {
+    Node sender = 1;
+    string rpcID = 2;
+}
+
+message Node {
+    string id = 1;
+    string address = 2;
+}

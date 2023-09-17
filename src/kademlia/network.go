@@ -1,21 +1,23 @@
 package main
 
 import (
+	pb "d7024e/protobuf"
 	"errors"
 	"fmt"
 	"net"
-	pb "d7024e/protobuf"
+
 	proto "github.com/golang/protobuf/proto"
 )
 
 type Network struct {
-	rt     *RoutingTable
+	rt *RoutingTable
 }
 
 /*
  * Defines the different message types sent over the network
  */
 type MessageType int32
+
 const (
 	Ping MessageType = 0
 	Pong MessageType = 1
@@ -23,8 +25,40 @@ const (
 	FindValue MessageType = 3
 )
 
-func Listen(ip string, port int) {
-	// TODO
+/*
+ * Handles incoming connections
+ *
+ * Takes: ip and port
+ */
+func (network *Network) Listen(ip string, port int) error {
+	// Resolve the UDP address to bind to
+	address := fmt.Sprintf("%s:%d", ip, port)
+	udpAddr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return err
+	}
+
+	// Create a UDP connection to listen on the specified address
+	conn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	fmt.Printf("Listening for incoming UDP messages on %s...\n", address)
+
+	buffer := make([]byte, 1024) // Adjust buffer size as needed
+
+	for {
+		n, _, err := conn.ReadFromUDP(buffer)
+		if err != nil {
+			fmt.Println("Error reading from UDP:", err)
+			continue
+		}
+
+		// Handle incoming message in a separate goroutine
+		go network.handleMessage(buffer[:n])
+	}
 }
 
 /*
@@ -34,9 +68,9 @@ func Listen(ip string, port int) {
  */
 func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) {
 
-	msg := &pb.Ping {
-		Sender: &pb.Node {
-			Id: network.rt.me.ID.String(),
+	msg := &pb.Ping{
+		Sender: &pb.Node{
+			Id:      network.rt.me.ID.String(),
 			Address: network.rt.me.Address,
 		},
 		RpcID: rpcID.String(),
@@ -94,8 +128,7 @@ func (network *Network) SendStoreMessage(data []byte, contact *Contact, rpcID *K
 /// Private Functions ///
 /////////////////////////
 
-func handleMessage(channel chan []byte, self *Contact, network *Network) (error) {
-	data := <- channel
+func (network *Network) handleMessage(data []byte) error {
 	mType, message, err := unwrapMessage(data)
 	if err != nil {
 		return err
@@ -110,10 +143,8 @@ func handleMessage(channel chan []byte, self *Contact, network *Network) (error)
 		}
 
 	default:
-		return errors.New("Handle Message: unknown message type")
-
+		return errors.New("handle message: unknown message type")
 	}
-
 
 	return nil
 
@@ -127,7 +158,7 @@ func handleMessage(channel chan []byte, self *Contact, network *Network) (error)
 func sendMessage(address string, mType MessageType, data []byte) {
 	// Wrap message for informed deserialization by reciever
 	msg, err := wrapMessage(mType, data)
-	if (err != nil) {
+	if err != nil {
 		fmt.Println("SendMessage: ", err)
 	}
 
@@ -139,7 +170,7 @@ func sendMessage(address string, mType MessageType, data []byte) {
 
 	// Write serialized data to address
 	_, err = conn.Write(msg)
-	if (err != nil) {
+	if err != nil {
 		fmt.Println("SendMessage: ", err)
 	}
 
@@ -155,9 +186,9 @@ func sendMessage(address string, mType MessageType, data []byte) {
  */
 func wrapMessage(mType MessageType, data []byte) ([]byte, error) {
 
-	wrapper := &pb.KademliaMessage {
+	wrapper := &pb.KademliaMessage{
 		MessageType: int32(mType),
-		Data: data,
+		Data:        data,
 	}
 
 	return proto.Marshal(wrapper)
@@ -181,5 +212,3 @@ func unwrapMessage(data []byte) (MessageType, []byte, error) {
 
 	return mType, unwrapped, nil
 }
-
-

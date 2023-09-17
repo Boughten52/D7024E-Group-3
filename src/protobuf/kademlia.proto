@@ -3,26 +3,11 @@ option go_package = "../protobuf";
 package protobuf;
 
 message KademliaMessage {
-    int32 message_type = 1;
-    bytes data = 2;
-}
-
-message Ping {
     Node sender = 1;
-    string rpcID = 2;
-}
-
-message Find {
-    Node sender = 1;
-    string rpcID = 2;
+    string rpc_id = 5;
+    string type = 2;
     string key = 3;
-}
-
-message Store {
-    Node sender = 1;
-    string rpcID = 2;
-    string key = 3;
-    bytes data = 4;
+    string data = 4;
 }
 
 message Node {

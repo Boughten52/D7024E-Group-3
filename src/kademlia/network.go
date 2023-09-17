@@ -1,12 +1,8 @@
 package main
 
 import (
-	pb "d7024e/protobuf"
-	"errors"
 	"fmt"
 	"net"
-
-	proto "github.com/golang/protobuf/proto"
 )
 
 type Network struct {
@@ -16,19 +12,20 @@ type Network struct {
 /*
  * Defines the different message types sent over the network
  */
-type MessageType int32
-
 const (
-	Ping MessageType = 0
-	Pong MessageType = 1
-	FindNode MessageType = 2
-	FindValue MessageType = 3
+	PING string = "ping"
+	PONG string = "pong"
+	FIND_NODE string = "find_node"
+	FIND_VALUE string = "find_value"
+	STORE string = "store"
 )
 
 /*
- * Handles incoming connections
+ * Listens for incoming UDP messages on the specified IP and port
  *
- * Takes: ip and port
+ * @param ip: IP address to listen on
+ * @param port: Port to listen on
+ * @return error: Error if any
  */
 func (network *Network) Listen(ip string, port int) error {
 	// Resolve the UDP address to bind to
@@ -64,112 +61,122 @@ func (network *Network) Listen(ip string, port int) error {
 /*
  * Sends a ping message to contact
  *
- * Takes: reciever, unique rpc id
+ * @param contact: Contact to ping
+ * @param rpcID: Unique RPC ID
  */
 func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the Ping message
+    values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["type"] = PING
 
-	msg := &pb.Ping{
-		Sender: &pb.Node{
-			Id:      network.rt.me.ID.String(),
-			Address: network.rt.me.Address,
-		},
-		RpcID: rpcID.String(),
-	}
-
-	data, err := proto.Marshal(msg)
+	// Build message
+	data, err := BuildMessage(values)
 	if err != nil {
-		fmt.Println("SendPingMessage: failed to marshal data %w", err)
+		fmt.Println("SendPingMessage: could not build message \n%w", err)
 	}
 
-	sendMessage(contact.Address, Ping, data)
-}
-
-func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact, rpcID *KademliaID) {
-	msg := &pb.Find {
-		Sender: &pb.Node {
-			Id: network.rt.me.ID.String(),
-			Address: network.rt.me.Address,
-		},
-		Key: id.String(),
-		RpcID: rpcID.String(),
-	}
-
-	data, err := proto.Marshal(msg)
-	if err != nil {
-		fmt.Println("SendFindContactMessage: failed to marshal data %w", err)
-	}
-
-	sendMessage(contact.Address, FindNode, data)
-}
-
-func (network *Network) SendFindDataMessage(hash string, contact *Contact, rpcID *KademliaID) {
-	msg := &pb.Find {
-		Sender: &pb.Node {
-			Id: network.rt.me.ID.String(),
-			Address: network.rt.me.Address,
-		},
-		Key: hash,
-		RpcID: rpcID.String(),
-	}
-
-	data, err := proto.Marshal(msg)
-	if err != nil {
-		fmt.Println("SendFindDataMessage: failed to marshal data %w", err)
-	}
-
-	sendMessage(contact.Address, FindValue, data)
-}
-
-func (network *Network) SendStoreMessage(data []byte, contact *Contact, rpcID *KademliaID) {
-	// TODO
-}
-
-/////////////////////////
-/// Private Functions ///
-/////////////////////////
-
-func (network *Network) handleMessage(data []byte) error {
-	mType, message, err := unwrapMessage(data)
-	if err != nil {
-		return err
-	}
-
-	switch mType {
-	case Ping:
-		ping := &pb.Ping{}
-		err := proto.Unmarshal(message, ping)
-		if err != nil {
-			return err
-		}
-
-	default:
-		return errors.New("handle message: unknown message type")
-	}
-
-	return nil
-
+	// Send message
+	SendMessage(contact.Address, data)
 }
 
 /*
- * Sends a protobuf message over UDP connection
+ * Sends a find contact message to contact
  *
- * Takes: address of reciever, type of message, and marshalled message
+ * @param id: ID to find
+ * @param contact: Receiver of message
+ * @param rpcID: Unique RPC ID
  */
-func sendMessage(address string, mType MessageType, data []byte) {
-	// Wrap message for informed deserialization by reciever
-	msg, err := wrapMessage(mType, data)
+func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the FindContact message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["key"] = id.String()
+	values["type"] = FIND_NODE
+
+	// Build message
+	data, err := BuildMessage(values)
 	if err != nil {
-		fmt.Println("SendMessage: ", err)
+		fmt.Println("SendFindContactMessage: could not build message \n%w", err)
 	}
 
+	// Send message
+	SendMessage(contact.Address, data)
+}
+
+/*
+ * Sends a find data message to contact
+ *
+ * @param hash: Hash to find
+ * @param contact: Receiver of message
+ * @param rpcID: Unique RPC ID
+ */
+func (network *Network) SendFindDataMessage(hash string, contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the FindData message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["key"] = hash
+	values["type"] = FIND_VALUE
+
+	// Build message
+	data, err := BuildMessage(values)
+	if err != nil {
+		fmt.Println("SendFindDataMessage: could not build message \n%w", err)
+	}
+	
+	// Send message
+	SendMessage(contact.Address, data)
+}
+
+/*
+ * Sends a store message to contact
+ *
+ * @param key: Key to store
+ * @param data: Data to store
+ * @param contact: Receiver of message
+ * @param rpcID: Unique RPC ID
+ */
+func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the Store message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["key"] = key.String()
+	values["data"] = string(data)
+	values["type"] = STORE
+
+	// Build message
+	data, err := BuildMessage(values)
+	if err != nil {
+		fmt.Println("SendStoreMessage: could not build message \n%w", err)
+	}
+
+	// Send message
+	SendMessage(contact.Address, data)
+}
+
+/*
+ * Sends a message to address
+ *
+ * @param address: Address to send message to
+ * @param data: Data to send
+ */
+func SendMessage(address string, data []byte) {
 	// Create UDP connection
 	conn, err := net.Dial("udp", address)
 	if err != nil {
 		fmt.Println("SendMessage: ", err)
 	}
 
-	// Write serialized data to address
-	_, err = conn.Write(msg)
+	// Write data to address
+	_, err = conn.Write(data)
 	if err != nil {
 		fmt.Println("SendMessage: ", err)
 	}
@@ -178,37 +185,34 @@ func sendMessage(address string, mType MessageType, data []byte) {
 	conn.Close()
 }
 
-/*
- * Wraps protobuf message with associated message type for informed deserialization later
- *
- * Takes: type of message, and marshalled message
- * Returns: marshalled data ready to be sent
- */
-func wrapMessage(mType MessageType, data []byte) ([]byte, error) {
+/// Private Functions ///
 
-	wrapper := &pb.KademliaMessage{
-		MessageType: int32(mType),
-		Data:        data,
-	}
-
-	return proto.Marshal(wrapper)
-}
-
-/*
- * Unwraps protobuf message with associated message type for informed deserialization later
- *
- * Takes: marshalled message
- * Returns: message type of marshalled data, Marshalled data
- */
-func unwrapMessage(data []byte) (MessageType, []byte, error) {
-
-	message := &pb.KademliaMessage{}
-	err := proto.Unmarshal(data, message)
+func (network *Network) handleMessage(data []byte) {
+	values, err := DeconstructMessage(data)
 	if err != nil {
-		return 0, []byte{0}, err
+		fmt.Println("handleMessage: could not deconstruct message \n%w", err)
 	}
-	mType := MessageType(message.MessageType)
-	unwrapped := message.Data
+	
+	switch values["type"] {
+	case PING:
+		// Create a new contact
+		// contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
+		
+		// TODO: Send a pong message back to the sender
+	case PONG:
 
-	return mType, unwrapped, nil
+	case FIND_NODE:
+
+	case FIND_VALUE:
+		
+	case STORE:
+
+	default:
+		fmt.Println("handleMessage: message type not recognized \n%w", err)
+		// TODO: Don't update routing table for default case
+	}
+
+	// Update the routing table with the sender
+	contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
+	network.rt.Update(contact)
 }

@@ -56,3 +56,16 @@ func (bucket *bucket) GetContactAndCalcDistance(target *KademliaID) []Contact {
 func (bucket *bucket) Len() int {
 	return bucket.list.Len()
 }
+
+/// NEW FUNCTIONS ///
+
+// UpdateContact updates the contact in the bucket TODO: check if this is correct
+func (bucket *bucket) UpdateContact(contact Contact) {
+	for e := bucket.list.Front(); e != nil; e = e.Next() {
+		nodeID := e.Value.(Contact).ID
+
+		if (contact).ID.Equals(nodeID) {
+			e.Value = contact
+		}
+	}
+}

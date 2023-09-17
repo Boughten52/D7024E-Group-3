@@ -12,6 +12,19 @@ message Ping {
     string rpcID = 2;
 }
 
+message Find {
+    Node sender = 1;
+    string rpcID = 2;
+    string key = 3;
+}
+
+message Store {
+    Node sender = 1;
+    string rpcID = 2;
+    string key = 3;
+    bytes data = 4;
+}
+
 message Node {
     string id = 1;
     string address = 2;

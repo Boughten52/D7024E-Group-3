@@ -18,6 +18,9 @@ type Network struct {
 type MessageType int32
 const (
 	Ping MessageType = 0
+	Pong MessageType = 1
+	FindNode MessageType = 2
+	FindValue MessageType = 3
 )
 
 func Listen(ip string, port int) {
@@ -47,15 +50,43 @@ func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) {
 	sendMessage(contact.Address, Ping, data)
 }
 
-func (network *Network) SendFindContactMessage(contact *Contact) {
-	// TODO
+func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact, rpcID *KademliaID) {
+	msg := &pb.Find {
+		Sender: &pb.Node {
+			Id: network.rt.me.ID.String(),
+			Address: network.rt.me.Address,
+		},
+		Key: id.String(),
+		RpcID: rpcID.String(),
+	}
+
+	data, err := proto.Marshal(msg)
+	if err != nil {
+		fmt.Println("SendFindContactMessage: failed to marshal data %w", err)
+	}
+
+	sendMessage(contact.Address, FindNode, data)
 }
 
-func (network *Network) SendFindDataMessage(hash string) {
-	// TODO
+func (network *Network) SendFindDataMessage(hash string, contact *Contact, rpcID *KademliaID) {
+	msg := &pb.Find {
+		Sender: &pb.Node {
+			Id: network.rt.me.ID.String(),
+			Address: network.rt.me.Address,
+		},
+		Key: hash,
+		RpcID: rpcID.String(),
+	}
+
+	data, err := proto.Marshal(msg)
+	if err != nil {
+		fmt.Println("SendFindDataMessage: failed to marshal data %w", err)
+	}
+
+	sendMessage(contact.Address, FindValue, data)
 }
 
-func (network *Network) SendStoreMessage(data []byte) {
+func (network *Network) SendStoreMessage(data []byte, contact *Contact, rpcID *KademliaID) {
 	// TODO
 }
 

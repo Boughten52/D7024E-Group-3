@@ -67,12 +67,3 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 
 	return IDLength*8 - 1
 }
-
-/// NEW FUNCTIONS ///
-
-// Update updates the contact in the correct Bucket TODO: check if this is correct
-func (routingTable *RoutingTable) Update(contact Contact) {
-	bucketIndex := routingTable.getBucketIndex(contact.ID)
-	bucket := routingTable.buckets[bucketIndex]
-	bucket.UpdateContact(contact)
-}

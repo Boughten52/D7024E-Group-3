@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"strings"
 )
 
 type Network struct {
@@ -13,11 +14,13 @@ type Network struct {
  * Defines the different message types sent over the network
  */
 const (
-	PING string = "ping"
-	PONG string = "pong"
-	FIND_NODE string = "find_node"
-	FIND_VALUE string = "find_value"
-	STORE string = "store"
+	PING                string = "ping"
+	PONG                string = "pong"
+	FIND_NODE           string = "find_node"
+	FIND_VALUE          string = "find_value"
+	FIND_NODE_RESPONSE  string = "find_node_response"
+	FIND_VALUE_RESPONSE string = "find_value_response"
+	STORE               string = "store"
 )
 
 /*
@@ -66,7 +69,7 @@ func (network *Network) Listen(ip string, port int) error {
  */
 func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) {
 	// Create a map to hold the values for the Ping message
-    values := make(map[string]string)
+	values := make(map[string]string)
 	values["rpc_id"] = rpcID.String()
 	values["sender_id"] = network.rt.me.ID.String()
 	values["sender_address"] = network.rt.me.Address
@@ -76,6 +79,30 @@ func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) {
 	data, err := BuildMessage(values)
 	if err != nil {
 		fmt.Println("SendPingMessage: could not build message \n%w", err)
+	}
+
+	// Send message
+	SendMessage(contact.Address, data)
+}
+
+/*
+ * Sends a pong message to contact
+ *
+ * @param contact: Receiver of message
+ * @param rpcID: Unique RPC ID
+ */
+func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the Pong message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["type"] = PONG
+
+	// Build message
+	data, err := BuildMessage(values)
+	if err != nil {
+		fmt.Println("SendPongMessage: could not build message \n%w", err)
 	}
 
 	// Send message
@@ -109,6 +136,33 @@ func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact,
 }
 
 /*
+ * Sends a find contact response message to contact
+ *
+ * @param contacts: Contacts to send
+ * @param contact: Receiver of message
+ * @param rpcID: Unique RPC ID
+ */
+func (network *Network) SendFindContactResponseMessage(contacts string, id *KademliaID, contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the FindContactResponse message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["key"] = id.String()
+	values["data"] = contacts
+	values["type"] = FIND_NODE_RESPONSE
+
+	// Build message
+	data, err := BuildMessage(values)
+	if err != nil {
+		fmt.Println("SendFindContactResponseMessage: could not build message \n%w", err)
+	}
+
+	// Send message
+	SendMessage(contact.Address, data)
+}
+
+/*
  * Sends a find data message to contact
  *
  * @param hash: Hash to find
@@ -129,7 +183,7 @@ func (network *Network) SendFindDataMessage(hash string, contact *Contact, rpcID
 	if err != nil {
 		fmt.Println("SendFindDataMessage: could not build message \n%w", err)
 	}
-	
+
 	// Send message
 	SendMessage(contact.Address, data)
 }
@@ -185,34 +239,83 @@ func SendMessage(address string, data []byte) {
 	conn.Close()
 }
 
-/// Private Functions ///
-
+/*
+ * Handles incoming messages
+ *
+ * @param data: Data received
+ */
 func (network *Network) handleMessage(data []byte) {
 	values, err := DeconstructMessage(data)
 	if err != nil {
 		fmt.Println("handleMessage: could not deconstruct message \n%w", err)
 	}
-	
+
 	switch values["type"] {
 	case PING:
-		// Create a new contact
-		// contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
-		
-		// TODO: Send a pong message back to the sender
+		fmt.Printf("Received ping message from %s", values["sender_address"])
+
+		// Create a new contact and add it to the routing table
+		contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
+		network.rt.AddContact(contact)
+
+		// Send a pong message back to the sender
+		network.SendPongMessage(&contact, NewKademliaID(values["rpc_id"]))
+
 	case PONG:
+		fmt.Printf("Received pong message from %s", values["sender_address"])
+
+		// Create a new contact and add it to the routing table
+		contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
+		network.rt.AddContact(contact)
 
 	case FIND_NODE:
+		fmt.Printf("Received find node message from %s", values["sender_address"])
+
+		// Create a new contact and add it to the routing table
+		contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
+		network.rt.AddContact(contact)
+
+		// TODO: Check if we have found the correct node
+
+		// Find closest contacts
+		closestContacts := network.rt.FindClosestContacts(NewKademliaID(values["key"]), bucketSize)
+
+		// Create a response message containing the closest nodes' information
+		response := ""
+		for _, node := range closestContacts {
+			response += node.String() + "\n"
+		}
+
+		// Send response message back to the sender
+		network.SendFindContactResponseMessage(response, NewKademliaID(values["key"]), &contact, NewKademliaID(values["rpc_id"]))
+
+	case FIND_NODE_RESPONSE:
+		fmt.Printf("Received find node response message from %s", values["sender_address"])
+
+		// TODO: Check if the correct node is included in data
+
+		for _, str := range strings.Split(values["data"], "\n") {
+			contact, err := NewContactFromString(str)
+			if err != nil {
+				fmt.Println("handleMessage: could not create contact from string \n%w", err)
+			}
+
+			// Send a find contact message to the contact
+			network.SendFindContactMessage(NewKademliaID(values["key"]), &contact, NewKademliaID(values["rpc_id"]))
+		}
 
 	case FIND_VALUE:
-		
+		fmt.Printf("Received find value message from %s", values["sender_address"])
+
+		// Create a new contact and add it to the routing table
+		contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
+		network.rt.AddContact(contact)
+
+	case FIND_VALUE_RESPONSE:
+
 	case STORE:
 
 	default:
 		fmt.Println("handleMessage: message type not recognized \n%w", err)
-		// TODO: Don't update routing table for default case
 	}
-
-	// Update the routing table with the sender
-	contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
-	network.rt.Update(contact)
 }

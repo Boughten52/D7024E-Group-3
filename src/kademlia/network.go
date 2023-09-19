@@ -1,4 +1,4 @@
-package main
+package kademlia
 
 import (
 	"fmt"
@@ -8,6 +8,11 @@ import (
 
 type Network struct {
 	rt *RoutingTable
+}
+
+// TODO: join network when called
+func NewNetwork(rt *RoutingTable) Network {
+	return Network{rt}
 }
 
 /*

@@ -17,29 +17,13 @@ FROM golang:latest
 WORKDIR /app
 
 # Install necessary packages
-RUN apt-get update && apt-get install -y iputils-ping tmux bash && apt-get clean
-
-# Add the directory where tmux is installed to the PATH
-ENV PATH="/usr/bin/tmux:${PATH}"
+RUN apt-get update
 
 # Copy the source code from the host into the container
 COPY src .
 
-# Set the working directory to be node-cli
-WORKDIR /app/cli
+# Build an executable for the kademlia-app
+RUN go build -o kademlia-app
 
-# Build an executable for the node-cli
-RUN go build -o /app/node-cli
-
-# Set the working directory to be node-cli
-WORKDIR /app/kademlia
-
-# Build the Go executable for the Kademlia application
-RUN go build -o /app/kademlia-app
-
-# Reset the working directory to /app
-WORKDIR /app
-
-# Start a tmux session with the Kademlia application
-# CMD ["tmux", "new-session", "-s", "kademlia-session", "./kademlia-app"]
+# Start the Kademlia application
 CMD ["./kademlia-app"]

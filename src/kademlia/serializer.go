@@ -1,9 +1,10 @@
 package main
 
 import (
-	"fmt"
 	pb "d7024e/protobuf"
-	proto "github.com/golang/protobuf/proto"
+	"fmt"
+
+	proto "google.golang.org/protobuf/proto"
 )
 
 /*
@@ -15,15 +16,15 @@ import (
 func BuildMessage(values map[string]string) ([]byte, error) {
 
 	// Define message
-	msg := &pb.KademliaMessage {
-		Sender: &pb.Node {
-			Id: values["sender_id"],
+	msg := &pb.KademliaMessage{
+		Sender: &pb.Node{
+			Id:      values["sender_id"],
 			Address: values["sender_address"],
 		},
 		RpcId: values["rpc_id"],
-		Type: values["type"],
-		Key: values["key"],
-		Data: values["data"],
+		Type:  values["type"],
+		Key:   values["key"],
+		Data:  values["data"],
 	}
 
 	// Serialize message

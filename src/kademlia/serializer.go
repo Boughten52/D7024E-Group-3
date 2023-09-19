@@ -1,4 +1,4 @@
-package main
+package kademlia
 
 import (
 	pb "d7024e/protobuf"

@@ -3,7 +3,6 @@ package kademlia
 import (
 	"fmt"
 	"net"
-	"strings"
 )
 
 type Network struct {
@@ -72,10 +71,10 @@ func (network *Network) Listen(ip string, port int) error {
  * @param contact: Contact to ping
  * @param rpcID: Unique RPC ID
  */
-func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) {
+func (network *Network) SendPingMessage(contact *Contact) {
 	// Create a map to hold the values for the Ping message
 	values := make(map[string]string)
-	values["rpc_id"] = rpcID.String()
+	values["rpc_id"] = NewRandomKademliaID().String()
 	values["sender_id"] = network.rt.me.ID.String()
 	values["sender_address"] = network.rt.me.Address
 	values["type"] = PING
@@ -121,23 +120,25 @@ func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) {
  * @param contact: Receiver of message
  * @param rpcID: Unique RPC ID
  */
-func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact, rpcID *KademliaID) {
+func (network *Network) SendFindContactMessage(id *KademliaID) {
 	// Create a map to hold the values for the FindContact message
 	values := make(map[string]string)
-	values["rpc_id"] = rpcID.String()
+	values["rpc_id"] = NewRandomKademliaID().String()
 	values["sender_id"] = network.rt.me.ID.String()
 	values["sender_address"] = network.rt.me.Address
 	values["key"] = id.String()
 	values["type"] = FIND_NODE
 
+	// TODO: Create a way to find alpha closest contact to hash
+
 	// Build message
-	data, err := BuildMessage(values)
+	/*data, err := BuildMessage(values)
 	if err != nil {
 		fmt.Println("SendFindContactMessage: could not build message \n%w", err)
-	}
+	}*/
 
 	// Send message
-	SendMessage(contact.Address, data)
+	//SendMessage(contact.Address, data)
 }
 
 /*
@@ -174,23 +175,25 @@ func (network *Network) SendFindContactResponseMessage(contacts string, id *Kade
  * @param contact: Receiver of message
  * @param rpcID: Unique RPC ID
  */
-func (network *Network) SendFindDataMessage(hash string, contact *Contact, rpcID *KademliaID) {
+func (network *Network) SendFindDataMessage(hash string) {
 	// Create a map to hold the values for the FindData message
 	values := make(map[string]string)
-	values["rpc_id"] = rpcID.String()
+	values["rpc_id"] = NewRandomKademliaID().String()
 	values["sender_id"] = network.rt.me.ID.String()
 	values["sender_address"] = network.rt.me.Address
 	values["key"] = hash
 	values["type"] = FIND_VALUE
 
+	// TODO: Create a way to find alpha closest contact to hash
+
 	// Build message
-	data, err := BuildMessage(values)
+	/*data, err := BuildMessage(values)
 	if err != nil {
 		fmt.Println("SendFindDataMessage: could not build message \n%w", err)
-	}
+	}*/
 
 	// Send message
-	SendMessage(contact.Address, data)
+	//SendMessage(contact.Address, data)
 }
 
 /*
@@ -201,24 +204,26 @@ func (network *Network) SendFindDataMessage(hash string, contact *Contact, rpcID
  * @param contact: Receiver of message
  * @param rpcID: Unique RPC ID
  */
-func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *Contact, rpcID *KademliaID) {
+func (network *Network) SendStoreMessage(data []byte) {
 	// Create a map to hold the values for the Store message
 	values := make(map[string]string)
-	values["rpc_id"] = rpcID.String()
+	values["rpc_id"] = NewRandomKademliaID().String()
 	values["sender_id"] = network.rt.me.ID.String()
 	values["sender_address"] = network.rt.me.Address
-	values["key"] = key.String()
+	values["key"] = hashKey(string(data)).String()
 	values["data"] = string(data)
 	values["type"] = STORE
 
+	// TODO: Create a way to find alpha closest contact to hash
+
 	// Build message
-	data, err := BuildMessage(values)
+	/*data, err := BuildMessage(values)
 	if err != nil {
 		fmt.Println("SendStoreMessage: could not build message \n%w", err)
 	}
 
 	// Send message
-	SendMessage(contact.Address, data)
+	SendMessage(contact.Address, data)*/
 }
 
 /*
@@ -297,17 +302,18 @@ func (network *Network) handleMessage(data []byte) {
 	case FIND_NODE_RESPONSE:
 		fmt.Printf("Received find node response message from %s", values["sender_address"])
 
+		// TODO: Is this code still relevant? REMAKE
 		// TODO: Check if the correct node is included in data
 
-		for _, str := range strings.Split(values["data"], "\n") {
+		/*for _, str := range strings.Split(values["data"], "\n") {
 			contact, err := NewContactFromString(str)
 			if err != nil {
 				fmt.Println("handleMessage: could not create contact from string \n%w", err)
 			}
 
 			// Send a find contact message to the contact
-			network.SendFindContactMessage(NewKademliaID(values["key"]), &contact, NewKademliaID(values["rpc_id"]))
-		}
+			network.SendFindContactMessage(NewKademliaID(values["key"]))
+		}*/
 
 	case FIND_VALUE:
 		fmt.Printf("Received find value message from %s", values["sender_address"])

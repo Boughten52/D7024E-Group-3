@@ -24,7 +24,7 @@ func NewContactFromString(str string) (Contact, error) {
 	info := re.FindStringSubmatch(str)
 
 	if len(info) < 2 {
-		return NewContact(NewKademliaID("0"), "0"), fmt.Errorf("NewContactFromString: failed to extract data from string\n")
+		return NewContact(NewKademliaID("0"), "0"), fmt.Errorf("NewContactFromString: failed to extract data from string")
 	}
 
 	return NewContact(NewKademliaID(info[0]), info[1]), nil

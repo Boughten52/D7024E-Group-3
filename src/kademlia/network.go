@@ -175,7 +175,9 @@ func (network *Network) SendFindContactResponseMessage(contacts string, id *Kade
  * @param contact: Receiver of message
  * @param rpcID: Unique RPC ID
  */
-func (network *Network) SendFindDataMessage(hash string) {
+func (network *Network) SendFindDataMessage(hash string) (string, error) {
+	fmt.Println("Retrieving content for hash:", hash)
+
 	// Create a map to hold the values for the FindData message
 	values := make(map[string]string)
 	values["rpc_id"] = NewRandomKademliaID().String()
@@ -186,6 +188,8 @@ func (network *Network) SendFindDataMessage(hash string) {
 
 	// TODO: Create a way to find alpha closest contact to hash
 
+	// TODO: wait on channel to return data
+
 	// Build message
 	/*data, err := BuildMessage(values)
 	if err != nil {
@@ -194,6 +198,7 @@ func (network *Network) SendFindDataMessage(hash string) {
 
 	// Send message
 	//SendMessage(contact.Address, data)
+	return "dummy data", nil
 }
 
 /*
@@ -204,14 +209,16 @@ func (network *Network) SendFindDataMessage(hash string) {
  * @param contact: Receiver of message
  * @param rpcID: Unique RPC ID
  */
-func (network *Network) SendStoreMessage(data []byte) {
+func (network *Network) SendStoreMessage(data string) {
+	fmt.Println("Uploading content: ", data)
+
 	// Create a map to hold the values for the Store message
 	values := make(map[string]string)
 	values["rpc_id"] = NewRandomKademliaID().String()
 	values["sender_id"] = network.rt.me.ID.String()
 	values["sender_address"] = network.rt.me.Address
-	values["key"] = hashKey(string(data)).String()
-	values["data"] = string(data)
+	values["key"] = hashKey(data).String()
+	values["data"] = data
 	values["type"] = STORE
 
 	// TODO: Create a way to find alpha closest contact to hash

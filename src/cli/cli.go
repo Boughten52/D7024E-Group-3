@@ -3,7 +3,7 @@ package cli
 import (
 	"d7024e/kademlia"
 	"fmt"
-	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -18,8 +18,6 @@ func NewCLI(network *kademlia.Network, exit *sync.WaitGroup) CLI {
 
 // TODO: Implement
 func (cli *CLI) Listen() {
-
-	re := regexp.MustCompile(`(\w+) (\w+)`)
 	var input string
 
 	for {
@@ -40,16 +38,21 @@ func (cli *CLI) Listen() {
 		}
 
 		// Find input variant
-		args := re.FindStringSubmatch(input)
+		args := strings.Fields(input)
+		if !(len(args) > 1 || (len(args) > 0 && args[0] == "exit")) {
+			fmt.Println("Too few arguments")
+			continue
+		}
+
 		switch args[0] {
+		case "exit":
+			cli.exit()
 		case "put":
 			cli.put(args[1])
 		case "get":
 			cli.get(args[1])
 		case "forget":
 			cli.forget(args[1])
-		case "exit":
-			cli.exit()
 		default:
 			fmt.Println("Invalid command.")
 		}
@@ -58,13 +61,15 @@ func (cli *CLI) Listen() {
 }
 
 func (cli *CLI) put(content string) {
-	fmt.Println("Uploading content: ", content)
-	// TODO: Calculate the hash and output it
+	cli.network.SendStoreMessage(content)
 }
 
 func (cli *CLI) get(hash string) {
-	fmt.Println("Retrieving content for hash:", hash)
-	// TODO: Retrieve and output the content and the node it was retrieved from
+	res, err := cli.network.SendFindDataMessage(hash)
+	if err != nil {
+		fmt.Println("Could not retrieve content...")
+	}
+	fmt.Println("Content: ", res)
 }
 
 func (cli *CLI) forget(hash string) {
@@ -73,6 +78,5 @@ func (cli *CLI) forget(hash string) {
 }
 
 func (cli *CLI) exit() {
-	fmt.Println("Terminating the node")
 	cli.syncExit.Done()
 }

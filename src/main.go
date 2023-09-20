@@ -33,4 +33,5 @@ func main() {
 	// TODO: Implement restful api
 
 	exit.Wait()
+	fmt.Println("NODE TERMINATED")
 }

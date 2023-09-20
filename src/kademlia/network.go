@@ -5,15 +5,6 @@ import (
 	"net"
 )
 
-type Network struct {
-	rt *RoutingTable
-}
-
-// TODO: join network when called
-func NewNetwork(rt *RoutingTable) Network {
-	return Network{rt}
-}
-
 /*
  * Defines the different message types sent over the network
  */
@@ -27,22 +18,48 @@ const (
 	STORE               string = "store"
 )
 
-/*func (network *Network) Put(string data) {
+type Network struct {
+	rt    *RoutingTable
+	kad   *Kademlia
+	k     int
+	alpha int
+}
+
+func NewNetwork(rt *RoutingTable, kad *Kademlia, k int, alpha int) *Network {
+	return &Network{rt, kad, k, alpha}
+}
+
+func (network *Network) JoinNetwork(contact *Contact) {
+	// TODO: Implement
+}
+
+func (network *Network) Put(data string) string {
 	var hash string
 	target := NewKademliaID(hash)
-	network.SendFindContactMessage(NewKademliaID(target), network.rt.FindClosestContacts(target, k))
-	for node := range network.rt.FindClosestContacts(target, k) {
-		network.SendStoreMessage(data)
+	// TODO: remake?
+	network.sendFindContactMessage(target, network.rt.FindClosestContacts(target, network.k))
+	for _, node := range network.rt.FindClosestContacts(target, network.k) {
+		network.sendStoreMessage(data, &node)
 	}
+
+	return hash
 }
 
-func (network *Network) Get(string hash) string {
-	network.SendFindDataMessage(hash)
+func (network *Network) Get(hash string) (string, error) {
+	// Check if its locally stored
+	data, isLocal := network.kad.LookUpData(hash)
+	if isLocal {
+		return data, nil
+	}
+
+	network.sendFindDataMessage(hash)
+
+	return "", nil // Remove
 }
 
-func (network *Network) Forget(string hash) {
-
-}*/
+func (network *Network) Forget(hash string) {
+	// TODO: Implement
+}
 
 /*
  * Listens for incoming UDP messages on the specified IP and port
@@ -87,7 +104,7 @@ func (network *Network) Listen(ip string, port int) error {
  *
  * @param contact: Contact to ping
  */
-func (network *Network) SendPingMessage(contact *Contact) {
+func (network *Network) sendPingMessage(contact *Contact) {
 	// Create a map to hold the values for the Ping message
 	values := make(map[string]string)
 	values["rpc_id"] = NewRandomKademliaID().String()
@@ -98,11 +115,11 @@ func (network *Network) SendPingMessage(contact *Contact) {
 	// Build message
 	data, err := BuildMessage(values)
 	if err != nil {
-		fmt.Println("SendPingMessage: could not build message \n%w", err)
+		fmt.Println("sendPingMessage: could not build message \n%w", err)
 	}
 
 	// Send message
-	SendMessage(contact.Address, data)
+	sendMessage(contact.Address, data)
 }
 
 /*
@@ -111,7 +128,7 @@ func (network *Network) SendPingMessage(contact *Contact) {
  * @param contact: Receiver of message
  * @param rpcID: Unique RPC ID
  */
-func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) {
+func (network *Network) sendPongMessage(contact *Contact, rpcID *KademliaID) {
 	// Create a map to hold the values for the Pong message
 	values := make(map[string]string)
 	values["rpc_id"] = rpcID.String()
@@ -122,11 +139,11 @@ func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) {
 	// Build message
 	data, err := BuildMessage(values)
 	if err != nil {
-		fmt.Println("SendPongMessage: could not build message \n%w", err)
+		fmt.Println("sendPongMessage: could not build message \n%w", err)
 	}
 
 	// Send message
-	SendMessage(contact.Address, data)
+	sendMessage(contact.Address, data)
 }
 
 /*
@@ -135,7 +152,7 @@ func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) {
  * @param id: ID to find
  */
 // TODO: Pick alpha contacts from the k-bucket (or buckets if one bucket isn't enough) closest to the target ID, and send asynchronous find contact messages to each of them. Then call this function.
-func (network *Network) SendFindContactMessage(id *KademliaID, nodes []Contact) {
+func (network *Network) sendFindContactMessage(id *KademliaID, nodes []Contact) {
 	// Create a map to hold the values for the FindContact message
 	values := make(map[string]string)
 	values["rpc_id"] = NewRandomKademliaID().String()
@@ -162,7 +179,7 @@ func (network *Network) SendFindContactMessage(id *KademliaID, nodes []Contact) 
  * @param contact: Receiver of message
  * @param rpcID: Unique RPC ID
  */
-func (network *Network) SendFindContactResponseMessage(contacts string, id *KademliaID, contact *Contact, rpcID *KademliaID) {
+func (network *Network) sendFindContactResponseMessage(contacts string, id *KademliaID, contact *Contact, rpcID *KademliaID) {
 	// Create a map to hold the values for the FindContactResponse message
 	values := make(map[string]string)
 	values["rpc_id"] = rpcID.String()
@@ -179,7 +196,7 @@ func (network *Network) SendFindContactResponseMessage(contacts string, id *Kade
 	}
 
 	// Send message
-	SendMessage(contact.Address, data)
+	sendMessage(contact.Address, data)
 }
 
 /*
@@ -189,7 +206,7 @@ func (network *Network) SendFindContactResponseMessage(contacts string, id *Kade
  *
  * @return string: Data retrieved
  */
-func (network *Network) SendFindDataMessage(hash string) (string, error) {
+func (network *Network) sendFindDataMessage(hash string) (string, error) {
 	fmt.Println("Retrieving content for hash:", hash)
 
 	// Create a map to hold the values for the FindData message
@@ -220,7 +237,7 @@ func (network *Network) SendFindDataMessage(hash string) (string, error) {
  *
  * @param data: Data to store
  */
-func (network *Network) SendStoreMessage(data string) {
+func (network *Network) sendStoreMessage(data string, contact *Contact) {
 	fmt.Println("Uploading content: ", data)
 
 	// Create a map to hold the values for the Store message
@@ -250,7 +267,7 @@ func (network *Network) SendStoreMessage(data string) {
  * @param address: Address to send message to
  * @param data: Data to send
  */
-func SendMessage(address string, data []byte) {
+func sendMessage(address string, data []byte) {
 	// Create UDP connection
 	conn, err := net.Dial("udp", address)
 	if err != nil {
@@ -287,7 +304,7 @@ func (network *Network) handleMessage(data []byte) {
 		fmt.Printf("Received ping message from %s", values["sender_address"])
 
 		// Send a PONG message back to the sender
-		network.SendPongMessage(&contact, NewKademliaID(values["rpc_id"]))
+		network.sendPongMessage(&contact, NewKademliaID(values["rpc_id"]))
 
 	case PONG:
 		fmt.Printf("Received pong message from %s", values["sender_address"])
@@ -308,7 +325,7 @@ func (network *Network) handleMessage(data []byte) {
 		}
 
 		// Send response message back to the sender
-		network.SendFindContactResponseMessage(response, NewKademliaID(values["key"]), &contact, NewKademliaID(values["rpc_id"]))
+		network.sendFindContactResponseMessage(response, NewKademliaID(values["key"]), &contact, NewKademliaID(values["rpc_id"]))
 
 	case FIND_NODE_RESPONSE:
 		fmt.Printf("Received find node response message from %s", values["sender_address"])
@@ -371,8 +388,4 @@ func NodeLookupTracker(channel chan []Contact) {
 	// k new nodes arrived
 
 	//state := ContactCandidates { contacts: make([]Contact, 5) }
-	for {
-
-	}
-
 }

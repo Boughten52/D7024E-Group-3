@@ -10,6 +10,10 @@ type Kademlia struct {
 	DataStore map[string]string
 }
 
+func NewKademlia(id int64, dataStore map[string]string) *Kademlia {
+	return &Kademlia{big.NewInt(id), dataStore}
+}
+
 /*
  * Looks up stored data
  *

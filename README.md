@@ -17,6 +17,11 @@ Enter the shell environment of any node by running:
 ```
 docker exec -it <node-name> sh
 ```
+To enter the Go program directly, we instead run:
+```
+docker attach <node-name>
+```
+
 An example of a node name is d7024e-group-3-kademliaNodes-1.
 
 We have installed the ping command to the image, which makes it possible to message other nodes in the network by typing:
@@ -106,10 +111,11 @@ To enter containers like we do when running locally, we first need to figure out
 ```
 sudo docker container ls
 ```
-We can then use either name or ID to enter a container:
+We can then use either name or ID to enter a container's bash environment:
 ```
 sudo docker exec -it <NAME/ID> sh
 ```
-From there we can use Unix commands and ping other containers in the network.
-
-We can also use the CLI created in Go (run `./node-cli` to see available commands).
+When we want to enter the running Go program, we instead use attach:
+```
+sudo docker attach <NAME/ID>
+```

@@ -48,16 +48,19 @@ func (cli *CLI) Listen() {
 		default:
 			fmt.Println("Invalid command.")
 		}
-
 	}
 }
 
 func (cli *CLI) put(content string) {
-	// TODO: Implement
+	fmt.Println("Succesfully stored '", content, "' with the key: ", cli.network.Put(content))
 }
 
 func (cli *CLI) get(hash string) {
-	// TODO: Implement
+	res, err := cli.network.Get(hash)
+	if err != nil {
+		fmt.Println("Could not retrieve content...")
+	}
+	fmt.Println("Content: ", res)
 }
 
 func (cli *CLI) forget(hash string) {

@@ -35,25 +35,69 @@ jobs:
         sshpass -p ${{ secrets.SSH_PASSWORD }} ssh -o StrictHostKeyChecking=no -p 27001 martinaskolin@130.240.207.20 << EOF
           cd D7024E-Group-3
 
-          # Step 1: Remove the Docker stack
-          sudo docker stack rm kademliaStack
+          # Step 1: Remove all containers
+          sudo docker rm d7024e-group-3-entryNode-1 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-1 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-2 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-3 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-4 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-5 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-6 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-7 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-8 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-9 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-10 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-11 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-12 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-13 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-14 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-15 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-16 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-17 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-18 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-19 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-20 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-21 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-22 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-23 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-24 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-25 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-26 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-27 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-28 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-29 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-30 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-31 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-32 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-33 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-34 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-35 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-36 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-37 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-38 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-39 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-40 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-41 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-42 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-43 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-44 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-45 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-46 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-47 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-48 -f
+          sudo docker rm d7024e-group-3-kademliaNodes-49 -f
 
-          # Step 2: Wait for the stack to be removed (optional but recommended)
-          while [[ "$(sudo docker stack ls --filter name=kademliaStack -q)" != "" ]]; do
-            sleep 5
-          done
+          # Step 2: Remove the old image
+          sudo docker image rm kadlab -f
 
-          # Step 3: List all containers associated with the stack and remove them
-          sudo docker rm -f $(sudo docker container ls -q --filter "label=com.docker.stack.namespace=kademliaStack")
-
-          # Step 4: Remove unused images (optional but recommended)
+          # Step 3: Remove all unused images
           sudo docker image prune -f
 
-          # Step 5: Build the new Docker image
+          # Step 4: Build the new Docker image
           sudo docker build . -t kadlab
 
-          # Step 6: Deploy the Docker stack using the updated docker-compose.yml
-          sudo docker stack deploy -c docker-compose.yml kademliaStack
+          # Step 5: Deploy the Docker containers using the updated docker-compose.yml
+          sudo docker compose up -d
         EOF
       env:
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}

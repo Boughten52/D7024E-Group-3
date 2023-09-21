@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bufio"
 	"d7024e/kademlia"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 )
@@ -18,40 +20,30 @@ func NewCLI(network *kademlia.Network, exit *sync.WaitGroup) CLI {
 
 // TODO: Implement
 func (cli *CLI) Listen() {
-	var input string
+
+	stdin := bufio.NewReader(os.Stdin)
 
 	for {
 		// Print commands
-		fmt.Println("Defined Commands:")
+		fmt.Println("")
+		fmt.Println("DEFINED COMMANDS:")
 		fmt.Println("put [content]")
 		fmt.Println("get [hash]")
 		fmt.Println("forget [hash]")
 		fmt.Println("exit")
 		fmt.Println("")
 
-		// Read input
-		fmt.Print("Enter command: ")
-		_, err := fmt.Scan(&input)
-		if err != nil {
-			fmt.Println("CLI: could not read input \n%w", err)
-			continue
-		}
+		text, _ := stdin.ReadString('\n')
+		args := strings.SplitN(text, " ", 2)
 
-		// Find input variant
-		args := strings.Fields(input)
-		if !(len(args) > 1 || (len(args) > 0 && args[0] == "exit")) {
-			fmt.Println("Too few arguments")
-			continue
-		}
-
-		switch args[0] {
-		case "exit":
+		switch {
+		case text == "exit":
 			cli.exit()
-		case "put":
+		case args[0] == "put" && len(args) > 1:
 			cli.put(args[1])
-		case "get":
+		case args[0] == "get" && len(args) > 1:
 			cli.get(args[1])
-		case "forget":
+		case args[0] == "forget" && len(args) > 1:
 			cli.forget(args[1])
 		default:
 			fmt.Println("Invalid command.")
@@ -60,7 +52,8 @@ func (cli *CLI) Listen() {
 }
 
 func (cli *CLI) put(content string) {
-	fmt.Println("Succesfully stored '", content, "' with the key: ", cli.network.Put(content))
+	fmt.Println("Succesfully stored '", content, "'")
+	//fmt.Println("Succesfully stored '", content, "' with the key: ", cli.network.Put(content))
 }
 
 func (cli *CLI) get(hash string) {
@@ -72,8 +65,7 @@ func (cli *CLI) get(hash string) {
 }
 
 func (cli *CLI) forget(hash string) {
-	fmt.Println("Stopping refresh for hash:", hash)
-	// TODO: Implement the 'forget' logic here
+	// TODO: Implement
 }
 
 func (cli *CLI) exit() {

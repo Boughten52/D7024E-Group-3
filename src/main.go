@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// Known contact to join network
-	friend := kademlia.NewContact(kademlia.NewKademliaID("0"), "127.0.0.1:8000")
+	friend := kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "127.0.0.1:8000")
 	k := 20
 	alpha := 3
 
@@ -25,8 +25,6 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
-	println(ip)
 
 	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip)
 	rt := kademlia.NewRoutingTable(&me)
@@ -53,5 +51,6 @@ func main() {
 	// TODO: Implement restful api
 
 	exit.Wait()
+	fmt.Println("Your ip address is: ", ip)
 	fmt.Println("NODE TERMINATED")
 }

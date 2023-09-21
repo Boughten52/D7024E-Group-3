@@ -56,7 +56,7 @@ func (network *Network) Get(hash string) (string, error) {
 
 	network.sendFindDataMessage(hash)*/
 
-	return "", nil // Remove
+	return "dummy data", nil // Remove
 }
 
 func (network *Network) Forget(hash string) {

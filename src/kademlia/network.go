@@ -313,7 +313,7 @@ func (network *Network) handleMessage(data []byte) {
 	case FIND_NODE_RESPONSE:
 		fmt.Printf("Received find node response message from %s", values["sender_address"])
 
-		// TODO: Must keep track of which k closest nodes have already been contacted during this node lookup session, and not contact them again.
+		// TODO: Continue node lookup session (write to channel?)
 
 		/*for _, str := range strings.Split(values["data"], "\n") {
 			contact, err := NewContactFromString(str)
@@ -371,8 +371,9 @@ func NodeLookupTracker(channel chan []Contact) {
 	// k new nodes arrived
 
 	//state := ContactCandidates { contacts: make([]Contact, 5) }
-	for {
 
-	}
+	/*for {
+
+	}*/
 
 }

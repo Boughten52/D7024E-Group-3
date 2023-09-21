@@ -26,6 +26,8 @@ func main() {
 		return
 	}
 
+	println(ip)
+
 	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip)
 	rt := kademlia.NewRoutingTable(&me)
 	kad := kademlia.NewKademlia(0, make(map[string]string)) // TODO: what does id do?

@@ -33,6 +33,11 @@ func (bucket *bucket) AddContact(contact Contact) {
 		if bucket.list.Len() < bucketSize {
 			bucket.list.PushFront(contact)
 		}
+		/*
+			TODO: In reality there should be an else case here to PING the least recently seen node (head).
+			If the node is alive, it should be moved to the tail of the list, and the new contact is discarded.
+			If the node is dead, it should be removed from the list, and the new contact is added to the tail.
+		*/
 	} else {
 		bucket.list.MoveToFront(element)
 	}

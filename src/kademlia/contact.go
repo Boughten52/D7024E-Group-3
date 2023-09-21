@@ -20,14 +20,23 @@ func NewContact(id *KademliaID, address string) Contact {
 }
 
 func NewContactFromString(str string) (Contact, error) {
-	re := regexp.MustCompile(`(\w+), (\w+)`)
+	re := regexp.MustCompile(`(\w+), (\w+), (\w+)`)
 	info := re.FindStringSubmatch(str)
 
-	if len(info) < 2 {
+	if len(info) < 3 {
 		return NewContact(NewKademliaID("0"), "0"), fmt.Errorf("NewContactFromString: failed to extract data from string")
 	}
 
-	return NewContact(NewKademliaID(info[0]), info[1]), nil
+	return Contact{NewKademliaID(info[0]), info[1], NewKademliaID(info[2])}, nil
+}
+
+func Contains(list []Contact, target Contact) bool {
+	for _, item := range list {
+		if item.ID.Equals(target.ID) {
+			return true // Element found in the list
+		}
+	}
+	return false // Element not found in the list
 }
 
 // CalcDistance calculates the distance to the target and
@@ -43,7 +52,7 @@ func (contact *Contact) Less(otherContact *Contact) bool {
 
 // String returns a simple string representation of a Contact
 func (contact *Contact) String() string {
-	return fmt.Sprintf(`contact("%s", "%s")`, contact.ID, contact.Address)
+	return fmt.Sprintf(`contact(%s, %s, %s)`, contact.ID.String(), contact.Address, contact.distance.String())
 }
 
 // ContactCandidates definition

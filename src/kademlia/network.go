@@ -23,10 +23,12 @@ type Network struct {
 	kad   *Kademlia
 	k     int
 	alpha int
+
+	coms map[string]chan []Contact
 }
 
 func NewNetwork(rt *RoutingTable, kad *Kademlia, k int, alpha int) *Network {
-	return &Network{rt, kad, k, alpha}
+	return &Network{rt, kad, k, alpha, make(map[string]chan []Contact)}
 }
 
 func (network *Network) JoinNetwork(contact *Contact) {
@@ -35,24 +37,24 @@ func (network *Network) JoinNetwork(contact *Contact) {
 
 func (network *Network) Put(data string) string {
 	var hash string
-	target := NewKademliaID(hash)
+	/*target := NewKademliaID(hash)
 	// TODO: remake?
 	network.sendFindContactMessage(target, network.rt.FindClosestContacts(target, network.k))
 	for _, node := range network.rt.FindClosestContacts(target, network.k) {
 		network.sendStoreMessage(data, &node)
-	}
+	}*/
 
 	return hash
 }
 
 func (network *Network) Get(hash string) (string, error) {
 	// Check if its locally stored
-	data, isLocal := network.kad.LookUpData(hash)
+	/*data, isLocal := network.kad.LookUpData(hash)
 	if isLocal {
 		return data, nil
 	}
 
-	network.sendFindDataMessage(hash)
+	network.sendFindDataMessage(hash)*/
 
 	return "", nil // Remove
 }
@@ -150,25 +152,27 @@ func (network *Network) sendPongMessage(contact *Contact, rpcID *KademliaID) {
  * Sends a find contact message to contact
  *
  * @param id: ID to find
+ * @param nodes: Nodes to send message to
  */
-// TODO: Pick alpha contacts from the k-bucket (or buckets if one bucket isn't enough) closest to the target ID, and send asynchronous find contact messages to each of them. Then call this function.
 func (network *Network) sendFindContactMessage(id *KademliaID, nodes []Contact) {
-	// Create a map to hold the values for the FindContact message
-	values := make(map[string]string)
-	values["rpc_id"] = NewRandomKademliaID().String()
-	values["sender_id"] = network.rt.me.ID.String()
-	values["sender_address"] = network.rt.me.Address
-	values["key"] = id.String()
-	values["type"] = FIND_NODE
+	for _, node := range nodes {
+		// Create a map to hold the values for the FindContact message
+		values := make(map[string]string)
+		values["rpc_id"] = NewRandomKademliaID().String()
+		values["sender_id"] = network.rt.me.ID.String()
+		values["sender_address"] = network.rt.me.Address
+		values["key"] = id.String()
+		values["type"] = FIND_NODE
 
-	// Build message
-	/*data, err := BuildMessage(values)
-	if err != nil {
-		fmt.Println("SendFindContactMessage: could not build message \n%w", err)
-	}*/
+		// Build message
+		data, err := BuildMessage(values)
+		if err != nil {
+			fmt.Println("SendFindContactMessage: could not build message \n%w", err)
+		}
 
-	// Send message
-	//SendMessage(contact.Address, data)
+		// Send message
+		sendMessage(node.Address, data)
+	}
 }
 
 /*
@@ -297,7 +301,6 @@ func (network *Network) handleMessage(data []byte) {
 
 	// Find the sender in the routing table
 	contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
-	defaultCase := false
 
 	switch values["type"] {
 	case PING:
@@ -363,33 +366,83 @@ func (network *Network) handleMessage(data []byte) {
 
 	default:
 		fmt.Println("handleMessage: message type not recognized \n%w", err)
-		defaultCase = true
+		return
 	}
 
-	if !defaultCase {
-		// Update routing table with sender
-		contact.CalcDistance(network.rt.me.ID)
-		network.rt.AddContact(contact)
-	}
+	// Update routing table with sender
+	contact.CalcDistance(network.rt.me.ID)
+	network.rt.AddContact(contact)
 }
 
-func NodeLookupTracker(channel chan []Contact) {
+func (network *Network) nodeLookup(target *KademliaID) {
+	fmt.Println("Starting node lookup for target:", target.String())
+
 	// Init state by copying k closest nodes from own routing table.
-	// Each response gets k new nodes.
-	// Compare new nodes to existing nodes in state. If a new node is closer than an existing node, replace the existing node furthest away with the new node (flag that a node was replaced).
-	// Note that if that state contains less than k nodes, nodes are freely inserted into the state until it contains k nodes.
-	// If at least one node was replaced, send a new find node message to the alpha closest nodes in state.
-	// Otherwise, send a find node message to the k closest nodes in state that have not been contacted yet.
-	// Terminate (stop sending messages) when all k nodes in the state have been contacted.
+	shortList := ContactCandidates{network.rt.FindClosestContacts(target, network.k)}
+	contactedNodes := ContactCandidates{make([]Contact, 0)}
 
-	// insert into ordered non duplicate list
-	// two lists: visited and not visited
+	for {
+		// Filter out nodes that are already in contactedNodes
+		alphaNodes := ContactCandidates{make([]Contact, 0)}
+		allNodesContacted := false
+		for _, node := range shortList.contacts {
+			if !Contains(contactedNodes.contacts, node) {
+				alphaNodes.Append([]Contact{node})
+				allNodesContacted = false
+			}
+		}
 
-	// k new nodes arrived
+		// Terminate when all k nodes in the state have been contacted.
+		if allNodesContacted {
+			break
+		}
 
-	//state := ContactCandidates { contacts: make([]Contact, 5) }
+		// Limit alphaNodes to network.alpha nodes
+		if alphaNodes.Len() > network.alpha {
+			// Sort inorder to prioritize messaging closer nodes
+			alphaNodes.Sort()
+			alphaNodes.contacts = alphaNodes.contacts[:network.alpha]
+		}
 
-	/*for {
+		network.sendFindContactMessage(target, alphaNodes.contacts)
+		contactedNodes.Append(alphaNodes.contacts)
 
-	}*/
+		// TODO: Wait for response (containing max k nodes)
+		response := make([]Contact, 0) // Dummy
+
+		// Update shortList
+		nodesReplaced := false
+		for _, newNode := range response {
+			// Filter out nodes that are already in shortList
+			if Contains(shortList.contacts, newNode) {
+				continue
+			}
+
+			// If shortList contains less than k nodes, nodes are freely inserted into the state until it contains k nodes.
+			if shortList.Len() < network.k {
+				shortList.Append([]Contact{newNode})
+			} else {
+				// shortList already contains k elements, replace the node furthest away with the new node if it is closer than the closest node in shortList
+				shortList.Sort()
+				if newNode.Less(&shortList.contacts[0]) {
+					shortList.contacts[len(shortList.contacts)-1] = newNode
+					nodesReplaced = true
+				}
+			}
+		}
+
+		// If at least one node was replaced, send a new find node message to the alpha closest nodes in state.
+		if nodesReplaced {
+			continue
+		}
+
+		// Otherwise, send a find node message to the k closest nodes in state that have not been contacted yet.
+		for _, node := range shortList.contacts {
+			if !Contains(contactedNodes.contacts, node) {
+				network.sendFindContactMessage(target, []Contact{node})
+				contactedNodes.Append([]Contact{node})
+			}
+		}
+	}
+	fmt.Println("Node lookup terminated for target:", target.String())
 }

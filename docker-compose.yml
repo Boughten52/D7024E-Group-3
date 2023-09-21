@@ -12,6 +12,8 @@ services:
     image: kadlab:latest
     stdin_open: true
     tty: true
+    ports:
+      - "8001:80"
     networks:
       kademlia_network:
         ipv4_address: 172.20.0.10
@@ -32,8 +34,8 @@ services:
         delay: 5s
         max_attempts: 3
         window: 10s
-#    ports:
-#      - "4000:80"
+    ports:
+      - ":80"
     networks:
       - kademlia_network
       

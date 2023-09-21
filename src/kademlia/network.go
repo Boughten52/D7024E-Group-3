@@ -3,6 +3,7 @@ package kademlia
 import (
 	"fmt"
 	"net"
+	"strings"
 )
 
 /*
@@ -24,15 +25,32 @@ type Network struct {
 	k     int
 	alpha int
 
-	coms map[string]chan []Contact
+	coms map[string]chan map[string]string
 }
 
 func NewNetwork(rt *RoutingTable, kad *Kademlia, k int, alpha int) *Network {
-	return &Network{rt, kad, k, alpha, make(map[string]chan []Contact)}
+	return &Network{rt, kad, k, alpha, make(map[string]chan map[string]string)}
 }
 
 func (network *Network) JoinNetwork(contact *Contact) {
-	// TODO: Implement
+	id := NewRandomKademliaID()
+	network.sendPingMessage(contact, id)
+
+	// Wait for response
+	<-network.coms[id.String()]
+
+	fmt.Println("My contacts before find node:")
+	for _, contact := range network.rt.FindClosestContacts(network.rt.me.ID, network.k) {
+		fmt.Printf("Contact in my routing table: %s\n", contact.ID.String())
+	}
+
+	network.nodeLookup(network.rt.me.ID)
+
+	fmt.Println("My contacts after find node:")
+	for _, contact := range network.rt.FindClosestContacts(network.rt.me.ID, network.k) {
+		fmt.Printf("Contact in my routing table: %s\n", contact.ID.String())
+	}
+
 }
 
 func (network *Network) Put(data string) string {
@@ -70,24 +88,24 @@ func (network *Network) Forget(hash string) {
  * @param port: Port to listen on
  * @return error: Error if any
  */
-func (network *Network) Listen(ip string, port int) error {
+func (network *Network) Listen(ip string, port int) {
+	fmt.Printf("Listening for incoming UDP messages on %s:%d...\n", ip, port)
+
 	// Resolve the UDP address to bind to
 	address := fmt.Sprintf("%s:%d", ip, port)
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
-		return err
+		fmt.Println("Listen: net resolve \n%w", err)
 	}
 
 	// Create a UDP connection to listen on the specified address
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		return err
+		fmt.Println("Listen: listen on udp \n%w", err)
 	}
 	defer conn.Close()
 
-	fmt.Printf("Listening for incoming UDP messages on %s...\n", address)
-
-	buffer := make([]byte, 1024) // Adjust buffer size as needed
+	buffer := make([]byte, 4096) // Adjust buffer size as needed
 
 	for {
 		n, _, err := conn.ReadFromUDP(buffer)
@@ -99,6 +117,7 @@ func (network *Network) Listen(ip string, port int) error {
 		// Handle incoming message in a separate goroutine
 		go network.handleMessage(buffer[:n])
 	}
+
 }
 
 /*
@@ -106,10 +125,10 @@ func (network *Network) Listen(ip string, port int) error {
  *
  * @param contact: Contact to ping
  */
-func (network *Network) sendPingMessage(contact *Contact) {
+func (network *Network) sendPingMessage(contact *Contact, id *KademliaID) {
 	// Create a map to hold the values for the Ping message
 	values := make(map[string]string)
-	values["rpc_id"] = NewRandomKademliaID().String()
+	values["rpc_id"] = id.String()
 	values["sender_id"] = network.rt.me.ID.String()
 	values["sender_address"] = network.rt.me.Address
 	values["type"] = PING
@@ -119,6 +138,8 @@ func (network *Network) sendPingMessage(contact *Contact) {
 	if err != nil {
 		fmt.Println("sendPingMessage: could not build message \n%w", err)
 	}
+
+	network.coms[values["rpc_id"]] = make(chan map[string]string)
 
 	// Send message
 	sendMessage(contact.Address, data)
@@ -154,11 +175,11 @@ func (network *Network) sendPongMessage(contact *Contact, rpcID *KademliaID) {
  * @param id: ID to find
  * @param nodes: Nodes to send message to
  */
-func (network *Network) sendFindContactMessage(id *KademliaID, nodes []Contact) {
+func (network *Network) sendFindContactMessage(id *KademliaID, nodes []Contact, rpcID *KademliaID) {
 	for _, node := range nodes {
 		// Create a map to hold the values for the FindContact message
 		values := make(map[string]string)
-		values["rpc_id"] = NewRandomKademliaID().String()
+		values["rpc_id"] = rpcID.String()
 		values["sender_id"] = network.rt.me.ID.String()
 		values["sender_address"] = network.rt.me.Address
 		values["key"] = id.String()
@@ -169,6 +190,8 @@ func (network *Network) sendFindContactMessage(id *KademliaID, nodes []Contact) 
 		if err != nil {
 			fmt.Println("SendFindContactMessage: could not build message \n%w", err)
 		}
+
+		network.coms[values["rpc_id"]] = make(chan map[string]string)
 
 		// Send message
 		sendMessage(node.Address, data)
@@ -221,6 +244,8 @@ func (network *Network) sendFindDataMessage(hash string) (string, error) {
 	values["key"] = hash
 	values["type"] = FIND_VALUE
 
+	//network.coms[values["rpc_id"]] = make(chan map[string]string)
+
 	// TODO: Create a way to find alpha closest contact to hash
 
 	// TODO: wait on channel to return data
@@ -272,8 +297,10 @@ func (network *Network) sendStoreMessage(data string, contact *Contact) {
  * @param data: Data to send
  */
 func sendMessage(address string, data []byte) {
+	fmt.Printf("Sending UDP message to %s\n", address+":80")
+
 	// Create UDP connection
-	conn, err := net.Dial("udp", address)
+	conn, err := net.Dial("udp", address+":80")
 	if err != nil {
 		fmt.Println("SendMessage: ", err)
 	}
@@ -294,6 +321,7 @@ func sendMessage(address string, data []byte) {
  * @param data: Data received
  */
 func (network *Network) handleMessage(data []byte) {
+
 	values, err := DeconstructMessage(data)
 	if err != nil {
 		fmt.Println("handleMessage: could not deconstruct message \n%w", err)
@@ -304,18 +332,30 @@ func (network *Network) handleMessage(data []byte) {
 
 	switch values["type"] {
 	case PING:
-		fmt.Printf("Received ping message from %s", values["sender_address"])
+		fmt.Printf("Received ping message from %s\n", values["sender_address"])
+
+		_, exist := network.coms[values["rpc_id"]]
+		if exist {
+			network.coms[values["rpc_id"]] <- values
+			delete(network.coms, values["rpc_id"])
+		}
 
 		// Send a PONG message back to the sender
 		network.sendPongMessage(&contact, NewKademliaID(values["rpc_id"]))
 
 	case PONG:
-		fmt.Printf("Received pong message from %s", values["sender_address"])
+		fmt.Printf("Received pong message from %s\n", values["sender_address"])
+
+		_, exist := network.coms[values["rpc_id"]]
+		if exist {
+			network.coms[values["rpc_id"]] <- values
+			delete(network.coms, values["rpc_id"])
+		}
 
 		// TODO: Handle PONG?
 
 	case FIND_NODE:
-		fmt.Printf("Received find node message from %s", values["sender_address"])
+		fmt.Printf("Received find node message from %s\n", values["sender_address"])
 
 		// Find my k closest contacts to the target ID (can come from multiple buckets, if one is not enough).
 		// If all contacts this node knows about < k, return all contacts. This is handled in FindClosestContacts.
@@ -331,7 +371,14 @@ func (network *Network) handleMessage(data []byte) {
 		network.sendFindContactResponseMessage(response, NewKademliaID(values["key"]), &contact, NewKademliaID(values["rpc_id"]))
 
 	case FIND_NODE_RESPONSE:
-		fmt.Printf("Received find node response message from %s", values["sender_address"])
+		fmt.Printf("Received find node response message from %s and RPC ID %s\n", values["sender_address"], values["rpc_id"])
+
+		_, exist := network.coms[values["rpc_id"]]
+		if exist {
+			fmt.Println("Coms are still up and im sending the node look up response over")
+			network.coms[values["rpc_id"]] <- values
+			delete(network.coms, values["rpc_id"])
+		}
 
 		// TODO: Continue node lookup session (write to channel?)
 
@@ -346,21 +393,21 @@ func (network *Network) handleMessage(data []byte) {
 		}*/
 
 	case FIND_VALUE:
-		fmt.Printf("Received find value message from %s", values["sender_address"])
+		fmt.Printf("Received find value message from %s\n", values["sender_address"])
 
 		// Return the value if it is stored locally
 
 		// Otherwise, return my k closest contacts to the target ID (can come from multiple buckets, if one is not enough).
 
 	case FIND_VALUE_RESPONSE:
-		fmt.Printf("Received find value response message from %s", values["sender_address"])
+		fmt.Printf("Received find value response message from %s\n", values["sender_address"])
 
 		// If the value was returned, terminate the lookup session.
 
 		// Otherwise, ask non-contacted nodes the value.
 
 	case STORE:
-		fmt.Printf("Received store message from %s", values["sender_address"])
+		fmt.Printf("Received store message from %s\n", values["sender_address"])
 
 		// Store the value locally
 
@@ -376,6 +423,8 @@ func (network *Network) handleMessage(data []byte) {
 
 func (network *Network) nodeLookup(target *KademliaID) {
 	fmt.Println("Starting node lookup for target:", target.String())
+
+	rpcID := NewRandomKademliaID()
 
 	// Init state by copying k closest nodes from own routing table.
 	shortList := ContactCandidates{network.rt.FindClosestContacts(target, network.k)}
@@ -394,6 +443,7 @@ func (network *Network) nodeLookup(target *KademliaID) {
 
 		// Terminate when all k nodes in the state have been contacted.
 		if allNodesContacted {
+			fmt.Println("All nodes contacted exiting node lookup")
 			break
 		}
 
@@ -404,15 +454,30 @@ func (network *Network) nodeLookup(target *KademliaID) {
 			alphaNodes.contacts = alphaNodes.contacts[:network.alpha]
 		}
 
-		network.sendFindContactMessage(target, alphaNodes.contacts)
+		network.sendFindContactMessage(target, alphaNodes.contacts, rpcID)
 		contactedNodes.Append(alphaNodes.contacts)
 
 		// TODO: Wait for response (containing max k nodes)
-		response := make([]Contact, 0) // Dummy
+		fmt.Printf("Waiting on coms for RPC ID %s\n", rpcID.String())
+		response := <-network.coms[rpcID.String()]
+		fmt.Println("Recieved coms message continue node lookup")
+
+		contacts := []Contact{}
+		for _, str := range strings.Split(response["data"], "\n") {
+			fmt.Println(str)
+			contact, err := NewContactFromString(str)
+			if err != nil {
+				fmt.Printf("nodeLookup: could not translate string to contact %s", err)
+				continue
+			}
+
+			fmt.Printf("New contact added to list: %s\n", str)
+			contacts = append(contacts, contact)
+		}
 
 		// Update shortList
 		nodesReplaced := false
-		for _, newNode := range response {
+		for _, newNode := range contacts {
 			// Filter out nodes that are already in shortList
 			if Contains(shortList.contacts, newNode) {
 				continue
@@ -433,16 +498,18 @@ func (network *Network) nodeLookup(target *KademliaID) {
 
 		// If at least one node was replaced, send a new find node message to the alpha closest nodes in state.
 		if nodesReplaced {
+			fmt.Println("Didnt replace any node, looping again")
 			continue
 		}
 
 		// Otherwise, send a find node message to the k closest nodes in state that have not been contacted yet.
 		for _, node := range shortList.contacts {
 			if !Contains(contactedNodes.contacts, node) {
-				network.sendFindContactMessage(target, []Contact{node})
+				network.sendFindContactMessage(target, []Contact{node}, rpcID)
 				contactedNodes.Append([]Contact{node})
 			}
 		}
 	}
+
 	fmt.Println("Node lookup terminated for target:", target.String())
 }

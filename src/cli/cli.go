@@ -52,7 +52,8 @@ func (cli *CLI) Listen() {
 }
 
 func (cli *CLI) put(content string) {
-	fmt.Println("Succesfully stored '", content, "' with the key: ", cli.network.Put(content))
+	fmt.Println("Succesfully stored '", content, "'")
+	//fmt.Println("Succesfully stored '", content, "' with the key: ", cli.network.Put(content))
 }
 
 func (cli *CLI) get(hash string) {

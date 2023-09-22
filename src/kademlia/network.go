@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,17 +21,23 @@ const (
 	STORE               string = "store"
 )
 
+var mutex = &sync.Mutex{}
+
 type Network struct {
-	rt    *RoutingTable
-	kad   *Kademlia
-	k     int
-	alpha int
+	rt         *RoutingTable
+	kad        *Kademlia
+	k          int // Maximum bucket size, usually 20
+	alpha      int // Degree of parallelism, usually 3
+	tExpire    int // TTL for a key/value pair, usually 86400 seconds (1 day)
+	tRefresh   int // Time after which an otherwise unaccessed bucket must be refreshed, usually 3600 seconds (1 hour)
+	tReplicate int // The interval between Kademlia replication events, when a node is required to publish its entire database, usually 3600 seconds (1 hour)
+	tRepublish int // The time after which the original publisher must republish a key/value pair, usually 86400 seconds (1 day)
 
 	coms map[string]chan map[string]string
 }
 
-func NewNetwork(rt *RoutingTable, kad *Kademlia, k int, alpha int) *Network {
-	return &Network{rt, kad, k, alpha, make(map[string]chan map[string]string)}
+func NewNetwork(rt *RoutingTable, kad *Kademlia, k int, alpha int, tExpire int, tRefresh int, tReplicate int, tRepublish int) *Network {
+	return &Network{rt, kad, k, alpha, tExpire, tRefresh, tReplicate, tRepublish, make(map[string]chan map[string]string)}
 }
 
 func (network *Network) JoinNetwork(contact *Contact) {
@@ -42,16 +49,16 @@ func (network *Network) JoinNetwork(contact *Contact) {
 
 	fmt.Println("My contacts before find node:")
 	for _, contact := range network.rt.FindClosestContacts(network.rt.me.ID, network.k) {
-		fmt.Printf("Contact in my routing table: %s\n", contact.ID.String())
+		fmt.Printf("Contact in my routing table: %s\n", contact.Address)
 	}
 
 	network.nodeLookup(network.rt.me.ID)
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	fmt.Println("My contacts after find node:")
 	for _, contact := range network.rt.FindClosestContacts(network.rt.me.ID, network.k) {
-		fmt.Printf("Contact in my routing table: %s\n", contact.ID.String())
+		fmt.Printf("Contact in my routing table: %s\n", contact.Address)
 	}
 
 }
@@ -141,7 +148,7 @@ func (network *Network) sendPingMessage(contact *Contact, id *KademliaID) {
 		fmt.Println("sendPingMessage: could not build message \n%w", err)
 	}
 
-	network.coms[values["rpc_id"]] = make(chan map[string]string)
+	network.coms[values["rpc_id"]] = make(chan map[string]string, 20)
 
 	// Send message
 	sendMessage(contact.Address, data)
@@ -306,15 +313,16 @@ func sendMessage(address string, data []byte) {
 	if err != nil {
 		fmt.Println("SendMessage: ", err)
 	}
+	// Close connection
+	defer conn.Close()
 
 	// Write data to address
+	//fmt.Printf("SendMessage: sending data: %s\n", data)
 	_, err = conn.Write(data)
 	if err != nil {
+		//fmt.Printf("SendMessage: could not write data %s\n", data)
 		fmt.Println("SendMessage: ", err)
 	}
-
-	// Close connection
-	conn.Close()
 }
 
 /*
@@ -380,6 +388,7 @@ func (network *Network) handleMessage(data []byte) {
 		if exist {
 			fmt.Println("Coms are still up and im sending the node look up response over")
 			network.coms[values["rpc_id"]] <- values
+			fmt.Println("HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
 			//delete(network.coms, values["rpc_id"])
 		}
 
@@ -418,10 +427,13 @@ func (network *Network) handleMessage(data []byte) {
 		fmt.Println("handleMessage: message type not recognized \n%w", err)
 		return
 	}
-
+	fmt.Println("EVERYNYAN")
 	// Update routing table with sender
+	mutex.Lock()
+	fmt.Printf("Adding contact %s to routing table\n", contact.Address)
 	contact.CalcDistance(network.rt.me.ID)
 	network.rt.AddContact(contact)
+	mutex.Unlock()
 }
 
 // TODO: dont send contact message to myself
@@ -430,11 +442,13 @@ func (network *Network) nodeLookup(target *KademliaID) {
 
 	rpcID := NewRandomKademliaID()
 
-	// Init state by copying k closest nodes from own routing table.
-	shortList := ContactCandidates{network.rt.FindClosestContacts(target, network.k)}
+	// Pick the alpha closest nodes to the target ID from the buckets and add to shortList.
+	shortList := ContactCandidates{network.rt.FindClosestContacts(target, network.alpha)}
+
+	// Create a list of nodes that have already been contacted.
 	contactedNodes := ContactCandidates{make([]Contact, 0)}
 
-	network.coms[rpcID.String()] = make(chan map[string]string)
+	network.coms[rpcID.String()] = make(chan map[string]string, 20)
 
 	for {
 		fmt.Println("Short List: ")
@@ -457,7 +471,7 @@ func (network *Network) nodeLookup(target *KademliaID) {
 			}
 		}
 
-		// Terminate when all k nodes in the state have been contacted.
+		// Terminate when all nodes in the state have been contacted.
 		if allNodesContacted {
 			fmt.Println("All nodes contacted exiting node lookup")
 			/*_, exist := network.coms[rpcID.String()]
@@ -491,6 +505,10 @@ func (network *Network) nodeLookup(target *KademliaID) {
 				fmt.Printf("nodeLookup: could not translate string to contact %s\n", err)
 				continue
 			}
+			if contact.ID.Equals(network.rt.me.ID) {
+				fmt.Printf("nodeLookup: contact %s is me, discard\n", contact.Address)
+				continue
+			}
 
 			//fmt.Printf("New contact added to list: %s\n", str)
 			contacts = append(contacts, contact)
@@ -519,7 +537,7 @@ func (network *Network) nodeLookup(target *KademliaID) {
 
 		// If at least one node was replaced, send a new find node message to the alpha closest nodes in state.
 		if nodesReplaced {
-			fmt.Println("Didnt replace any node, looping again")
+			fmt.Println("At least one node was replaced, looping again")
 			continue
 		}
 
@@ -531,7 +549,8 @@ func (network *Network) nodeLookup(target *KademliaID) {
 			}
 		}
 
-		fmt.Println("Looping again after sending more find node messages lmao")
+		time.Sleep(5 * time.Second)
+		fmt.Println("Looping after having sent find node message to k closest nodes")
 	}
 
 	_, exist := network.coms[rpcID.String()]

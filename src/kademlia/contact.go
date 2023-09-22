@@ -2,7 +2,6 @@ package kademlia
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
 )
 
@@ -17,17 +16,6 @@ type Contact struct {
 // NewContact returns a new instance of a Contact
 func NewContact(id *KademliaID, address string) Contact {
 	return Contact{id, address, nil}
-}
-
-func NewContactFromString(str string) (Contact, error) {
-	re := regexp.MustCompile(`(\w+), (\w+)`)
-	info := re.FindStringSubmatch(str)
-
-	if len(info) < 2 {
-		return NewContact(NewKademliaID("0"), "0"), fmt.Errorf("NewContactFromString: failed to extract data from string")
-	}
-
-	return NewContact(NewKademliaID(info[0]), info[1]), nil
 }
 
 // CalcDistance calculates the distance to the target and

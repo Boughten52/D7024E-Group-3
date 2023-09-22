@@ -1,23 +1,22 @@
-package kademlia
+package protobuf
 
 import (
-	pb "d7024e/protobuf"
 	"fmt"
 
 	proto "google.golang.org/protobuf/proto"
 )
 
 /*
- * BuildMessage takes a map of values and returns a serialized message
+ * SerializeMessage takes a map of values and returns the serialized data
  *
  * @param values: map containing message values
  * @return tuple containing serialized message and error if any
  */
-func BuildMessage(values map[string]string) ([]byte, error) {
+func SerializeMessage(values map[string]string) ([]byte, error) {
 
 	// Define message
-	msg := &pb.KademliaMessage{
-		Sender: &pb.Node{
+	msg := &KademliaMessage{
+		Sender: &Node{
 			Id:      values["sender_id"],
 			Address: values["sender_address"],
 		},
@@ -30,23 +29,23 @@ func BuildMessage(values map[string]string) ([]byte, error) {
 	// Serialize message
 	data, err := proto.Marshal(msg)
 	if err != nil {
-		return nil, fmt.Errorf("BuildMessage: failed to marshal data \n%w", err)
+		return nil, fmt.Errorf("BuildMessage: failed to marshal data %w", err)
 	}
 
 	return data, nil
 }
 
 /*
- * DeconstructMessage takes a serialized message and returns a map of values
+ * DeserializeMessage takes a serialized message and returns a map of values
  *
  * @param data: serialized message
  * @return tuple containing map of values and error if any
  */
-func DeconstructMessage(data []byte) (map[string]string, error) {
-	msg := &pb.KademliaMessage{}
+func DeserializeMessage(data []byte) (map[string]string, error) {
+	msg := &KademliaMessage{}
 	err := proto.Unmarshal(data, msg)
 	if err != nil {
-		return nil, fmt.Errorf("DeconstructMessage: failed to unmarshal data \n%w", err)
+		return nil, fmt.Errorf("DeconstructMessage: failed to unmarshal data %w", err)
 	}
 
 	values := make(map[string]string)

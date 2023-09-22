@@ -1,8 +1,9 @@
 package kademlia
 
 import (
+	"errors"
 	"fmt"
-	"strings"
+	"regexp"
 	"sort"
 )
 
@@ -20,14 +21,19 @@ func NewContact(id *KademliaID, address string) Contact {
 }
 
 func NewContactFromString(str string) (Contact, error) {
-	info := strings.Split(str, ", ")
+	re := regexp.MustCompile(`contact\((.*?)\)`)
 
+	// Find the first match of the pattern in the input string
+	match := re.FindStringSubmatch(str)
 
-	if len(info) < 3 {
-		return NewContact(NewRandomKademliaID(), "0"), fmt.Errorf("NewContactFromString: failed to extract data from string")
+	// Check if a match was found
+	if len(match) > 1 {
+		// Split the elements string into a slice of elements
+		elements := regexp.MustCompile(`,\s*`).Split(match[1], -1)
+		return Contact{NewKademliaID(elements[0]), elements[1], NewKademliaID(elements[2])}, nil
 	}
 
-	return Contact{NewKademliaID(info[0]), info[1], NewKademliaID(info[2])}, nil
+	return NewContact(NewRandomKademliaID(), "0"), errors.New("NewContactFromString: failed to extract data from string")
 }
 
 func Contains(list []Contact, target Contact) bool {

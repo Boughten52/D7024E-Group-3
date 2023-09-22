@@ -17,8 +17,8 @@ func main() {
 
 	// Known contact to join network
 	friend := kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "172.20.0.10")
-	k := 20
-	alpha := 3
+	k := 4
+	alpha := 2
 
 	// Prevent main from closing before user wants to terminate node
 	var exit sync.WaitGroup

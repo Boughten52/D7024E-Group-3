@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 )
 
 /*
@@ -45,6 +46,8 @@ func (network *Network) JoinNetwork(contact *Contact) {
 	}
 
 	network.nodeLookup(network.rt.me.ID)
+
+	time.Sleep(10 * time.Second)
 
 	fmt.Println("My contacts after find node:")
 	for _, contact := range network.rt.FindClosestContacts(network.rt.me.ID, network.k) {
@@ -105,9 +108,8 @@ func (network *Network) Listen(ip string, port int) {
 	}
 	defer conn.Close()
 
-	buffer := make([]byte, 4096) // Adjust buffer size as needed
-
 	for {
+		buffer := make([]byte, 4096) // Adjust buffer size as needed
 		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			fmt.Println("Error reading from UDP:", err)
@@ -191,7 +193,7 @@ func (network *Network) sendFindContactMessage(id *KademliaID, nodes []Contact, 
 			fmt.Println("SendFindContactMessage: could not build message \n%w", err)
 		}
 
-		network.coms[values["rpc_id"]] = make(chan map[string]string)
+		//network.coms[values["rpc_id"]] = make(chan map[string]string)
 
 		// Send message
 		sendMessage(node.Address, data)
@@ -325,6 +327,7 @@ func (network *Network) handleMessage(data []byte) {
 	values, err := DeconstructMessage(data)
 	if err != nil {
 		fmt.Println("handleMessage: could not deconstruct message \n%w", err)
+		return
 	}
 
 	// Find the sender in the routing table
@@ -377,7 +380,7 @@ func (network *Network) handleMessage(data []byte) {
 		if exist {
 			fmt.Println("Coms are still up and im sending the node look up response over")
 			network.coms[values["rpc_id"]] <- values
-			delete(network.coms, values["rpc_id"])
+			//delete(network.coms, values["rpc_id"])
 		}
 
 		// TODO: Continue node lookup session (write to channel?)
@@ -421,6 +424,7 @@ func (network *Network) handleMessage(data []byte) {
 	network.rt.AddContact(contact)
 }
 
+// TODO: dont send contact message to myself
 func (network *Network) nodeLookup(target *KademliaID) {
 	fmt.Println("Starting node lookup for target:", target.String())
 
@@ -430,12 +434,24 @@ func (network *Network) nodeLookup(target *KademliaID) {
 	shortList := ContactCandidates{network.rt.FindClosestContacts(target, network.k)}
 	contactedNodes := ContactCandidates{make([]Contact, 0)}
 
+	network.coms[rpcID.String()] = make(chan map[string]string)
+
 	for {
+		fmt.Println("Short List: ")
+		for _, node := range shortList.contacts {
+			fmt.Printf("%s\n", node.Address)
+		}
+
+		fmt.Println("Contacted List: ")
+		for _, node := range contactedNodes.contacts {
+			fmt.Printf("%s\n", node.Address)
+		}
+
 		// Filter out nodes that are already in contactedNodes
 		alphaNodes := ContactCandidates{make([]Contact, 0)}
-		allNodesContacted := false
+		allNodesContacted := true
 		for _, node := range shortList.contacts {
-			if !Contains(contactedNodes.contacts, node) {
+			if !Contains(contactedNodes.contacts, node) && !node.ID.Equals(network.rt.me.ID) {
 				alphaNodes.Append([]Contact{node})
 				allNodesContacted = false
 			}
@@ -444,6 +460,10 @@ func (network *Network) nodeLookup(target *KademliaID) {
 		// Terminate when all k nodes in the state have been contacted.
 		if allNodesContacted {
 			fmt.Println("All nodes contacted exiting node lookup")
+			/*_, exist := network.coms[rpcID.String()]
+			if exist {
+				delete(network.coms, rpcID.String())
+			}*/
 			break
 		}
 
@@ -463,15 +483,16 @@ func (network *Network) nodeLookup(target *KademliaID) {
 		fmt.Println("Recieved coms message continue node lookup")
 
 		contacts := []Contact{}
-		for _, str := range strings.Split(response["data"], "\n") {
-			fmt.Println(str)
+		strs := strings.Split(response["data"], "\n")
+		conStrs := strs[:len(strs)-1] // remove last element (not a contact)
+		for _, str := range conStrs {
 			contact, err := NewContactFromString(str)
 			if err != nil {
-				fmt.Printf("nodeLookup: could not translate string to contact %s", err)
+				fmt.Printf("nodeLookup: could not translate string to contact %s\n", err)
 				continue
 			}
 
-			fmt.Printf("New contact added to list: %s\n", str)
+			//fmt.Printf("New contact added to list: %s\n", str)
 			contacts = append(contacts, contact)
 		}
 
@@ -509,6 +530,13 @@ func (network *Network) nodeLookup(target *KademliaID) {
 				contactedNodes.Append([]Contact{node})
 			}
 		}
+
+		fmt.Println("Looping again after sending more find node messages lmao")
+	}
+
+	_, exist := network.coms[rpcID.String()]
+	if exist {
+		delete(network.coms, rpcID.String())
 	}
 
 	fmt.Println("Node lookup terminated for target:", target.String())

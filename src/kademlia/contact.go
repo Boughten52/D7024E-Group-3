@@ -2,7 +2,7 @@ package kademlia
 
 import (
 	"fmt"
-	"regexp"
+	"strings"
 	"sort"
 )
 
@@ -20,8 +20,8 @@ func NewContact(id *KademliaID, address string) Contact {
 }
 
 func NewContactFromString(str string) (Contact, error) {
-	re := regexp.MustCompile(`(\w+), (\w+), (\w+)`)
-	info := re.FindStringSubmatch(str)
+	info := strings.Split(str, ", ")
+
 
 	if len(info) < 3 {
 		return NewContact(NewRandomKademliaID(), "0"), fmt.Errorf("NewContactFromString: failed to extract data from string")

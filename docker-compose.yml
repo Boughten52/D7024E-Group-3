@@ -21,6 +21,8 @@ services:
 
   node: # These nodes join the network through the entry node
     image: kadlab:latest # Make sure your Docker image has this name.
+    depends_on:
+      - entryNode
     stdin_open: true
     tty: true
     deploy:

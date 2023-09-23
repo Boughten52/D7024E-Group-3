@@ -115,14 +115,8 @@ func (network *Network) Listen(ip string, port int) {
 	}
 	defer conn.Close()
 
-	// Set the buffer size for reading
-	err = conn.SetReadBuffer(16384)
-	if err != nil {
-		fmt.Println("Listen: set read buffer \n%w", err)
-	}
-
 	for {
-		buffer := make([]byte, 16384) // Adjust buffer size as needed
+		buffer := make([]byte, 4096) // Adjust buffer size as needed
 		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			fmt.Println("Error reading from UDP:", err)

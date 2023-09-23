@@ -71,3 +71,13 @@ func (candidates *ContactCandidates) Swap(i, j int) {
 func (candidates *ContactCandidates) Less(i, j int) bool {
 	return candidates.contacts[i].Less(&candidates.contacts[j])
 }
+
+// Check if list contains target
+func Contains(list []Contact, target Contact) bool {
+	for _, item := range list {
+		if item.ID.Equals(target.ID) {
+			return true // Element found in the list
+		}
+	}
+	return false // Element not found in the list
+}

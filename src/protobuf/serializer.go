@@ -6,12 +6,7 @@ import (
 	proto "google.golang.org/protobuf/proto"
 )
 
-/*
- * SerializeMessage takes a map of values and returns the serialized data
- *
- * @param values: map containing message values
- * @return tuple containing serialized message and error if any
- */
+// SerializeMessage takes a map of values and returns the serialized data
 func SerializeMessage(values map[string]string) ([]byte, error) {
 
 	// Define message
@@ -35,12 +30,7 @@ func SerializeMessage(values map[string]string) ([]byte, error) {
 	return data, nil
 }
 
-/*
- * DeserializeMessage takes a serialized message and returns a map of values
- *
- * @param data: serialized message
- * @return tuple containing map of values and error if any
- */
+// DeserializeMessage takes a serialized message and returns a map of values
 func DeserializeMessage(data []byte) (map[string]string, error) {
 	msg := &KademliaMessage{}
 	err := proto.Unmarshal(data, msg)

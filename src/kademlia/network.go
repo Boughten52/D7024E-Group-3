@@ -2,14 +2,13 @@ package kademlia
 
 import (
 	"d7024e/protobuf"
+	"d7024e/utils"
 	"fmt"
 	"net"
 	"time"
 )
 
-/*
- * Defines the different message types sent over the network
- */
+// Defines the different message types sent over the network.
 const (
 	PING                string = "ping"
 	PONG                string = "pong"
@@ -28,8 +27,8 @@ type Network struct {
 	alpha int
 }
 
-func NewNetwork(contact *Contact) {
-
+func NewNetwork(rt *RoutingTable, k int, alpha int) *Network {
+	return &Network{rt, make(map[string]chan map[string]string), k, alpha}
 }
 
 func (network *Network) Listen(ip string, port int) {
@@ -38,13 +37,13 @@ func (network *Network) Listen(ip string, port int) {
 	address := fmt.Sprintf("%s:%d", ip, port)
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
-		fmt.Println("Listen: net resolve \n%w", err)
+		utils.LogError("Network.Listen net resolve %w", err)
 	}
 
 	// Create a UDP connection to listen on the specified address
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		fmt.Println("Listen: listen on udp \n%w", err)
+		utils.LogError("Network.Listen listen on udp %w", err)
 	}
 	defer conn.Close()
 
@@ -52,7 +51,7 @@ func (network *Network) Listen(ip string, port int) {
 		buffer := make([]byte, 4096) // Adjust buffer size as needed
 		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			fmt.Println("Error reading from UDP:", err)
+			utils.LogError("Network.Listen reading from udp %w", err)
 			continue
 		}
 
@@ -76,7 +75,7 @@ func (network *Network) Listen(ip string, port int) {
 			case STORE:
 				// TODO: Implement
 			default:
-				network.SendResponse(NewKademliaID(values["rpc_id"]), values)
+				network.TransmitResponse(NewKademliaID(values["rpc_id"]), values)
 			}
 
 			// Update routing table with sender
@@ -85,11 +84,7 @@ func (network *Network) Listen(ip string, port int) {
 	}
 }
 
-/*
- * Sends a ping message to contact
- *
- * @param contact: Contact to ping/pong
- */
+// Sends a ping message to contact.
 func (network *Network) SendPingPongMessage(contact *Contact, rpcID *KademliaID, msgType string) {
 	// Create a map to hold the values for the Ping message
 	values := make(map[string]string)
@@ -100,7 +95,7 @@ func (network *Network) SendPingPongMessage(contact *Contact, rpcID *KademliaID,
 
 	data, err := protobuf.SerializeMessage(values)
 	if err != nil {
-		fmt.Printf("SendPingPongMessage: could not build message (%s)", err)
+		utils.LogError("SendPingPongMessage: could not build message (%s)", err)
 		return
 	}
 
@@ -108,25 +103,55 @@ func (network *Network) SendPingPongMessage(contact *Contact, rpcID *KademliaID,
 
 }
 
-func (network *Network) SendFindContactMessage(contact *Contact, rpcID *KademliaID) {
-	// TODO
+func (network *Network) SendFindContactMessage(id *KademliaID, nodes []Contact, rpcID *KademliaID) {
+	for _, node := range nodes {
+		// Create a map to hold the values for the FindContact message
+		values := make(map[string]string)
+		values["rpc_id"] = rpcID.String()
+		values["sender_id"] = network.rt.me.ID.String()
+		values["sender_address"] = network.rt.me.Address
+		values["key"] = id.String()
+		values["type"] = FIND_NODE
+
+		// Build message
+		data, err := protobuf.SerializeMessage(values)
+		if err != nil {
+			utils.LogError("SendFindContactMessage: could not build message (%s)", err)
+			return
+		}
+
+		// Send message
+		network.sendMessage(node.Address, data)
+	}
 }
 
-func (network *Network) SendFindDataMessage(hash string, rpcID *KademliaID) {
-	// TODO
+func (network *Network) SendFindDataMessage(hash string, nodes []Contact, rpcID *KademliaID) {
+	for _, node := range nodes {
+		// Create a map to hold the values for the FindData message
+		values := make(map[string]string)
+		values["rpc_id"] = rpcID.String()
+		values["sender_id"] = network.rt.me.ID.String()
+		values["sender_address"] = network.rt.me.Address
+		values["key"] = hash
+		values["type"] = FIND_VALUE
+
+		// Build message
+		data, err := protobuf.SerializeMessage(values)
+		if err != nil {
+			utils.LogError("SendFindDataMessage: could not build message (%s)", err)
+			return
+		}
+
+		// Send message
+		network.sendMessage(node.Address, data)
+	}
 }
 
 func (network *Network) SendStoreMessage(data []byte, rpcID *KademliaID) {
 	// TODO
 }
 
-/*
- * Sends a message to address
- *
- * @param address: Address to send message to
- * @param port: Port to send message to
- * @param data: Data to send
- */
+// Sends a message to address.
 func (network *Network) sendMessage(address string, data []byte) {
 	// Create UDP connection
 	conn, err := net.Dial("udp", address)
@@ -144,9 +169,7 @@ func (network *Network) sendMessage(address string, data []byte) {
 	conn.Close()
 }
 
-/*
- * Listens on a specified channel for set amount of time before timing out
- */
+// Listens on a specified channel for set amount of time before timing out.
 func (network *Network) ListenWithTimeout(rpcID *KademliaID, sec int) (map[string]string, error) {
 	network.CreateChannel(rpcID) // makes sure it exist
 
@@ -160,27 +183,22 @@ func (network *Network) ListenWithTimeout(rpcID *KademliaID, sec int) (map[strin
 	}
 }
 
-/*
- * Sends data on a specified channel
- */
-func (network *Network) SendResponse(rpcID *KademliaID, response map[string]string) {
-	network.CreateChannel(rpcID) // makes sure it exist
-	network.coms[rpcID.String()] <- response
+// Sends data on a specified channel.
+func (network *Network) TransmitResponse(rpcID *KademliaID, response map[string]string) {
+	network.CreateChannel(rpcID) <- response
 }
 
-/*
- * Creates channel for rpc id if a channel does not already exist
- */
-func (network *Network) CreateChannel(rpcID *KademliaID) {
+// Creates channel for rpc id if a channel does not already exist.
+func (network *Network) CreateChannel(rpcID *KademliaID) chan map[string]string {
 	_, exist := network.coms[rpcID.String()]
 	if !exist {
 		network.coms[rpcID.String()] = make(chan map[string]string)
 	}
+
+	return network.coms[rpcID.String()]
 }
 
-/*
- * Deletes channel for rpc id if it exists
- */
+// Deletes channel for rpc id if it exists.
 func (network *Network) RemoveChannel(rpcID *KademliaID) {
 	_, exist := network.coms[rpcID.String()]
 	if exist {

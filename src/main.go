@@ -8,13 +8,14 @@ import (
 	"sync"
 )
 
-func main() {
-	// Known contact to join network
-	friend := kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "127.0.0.1:8000")
-	k := 20
-	alpha := 3
+var bootstrap = kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "127.0.0.1:8000")
+var k = 20
+var alpha = 3
+var port = 80
 
-	fmt.Println("Initializing node...")
+func main() {
+	utils.Log(1, "Initializing node")
+
 	// Prevent main from closing before user wants to terminate node
 	var exit sync.WaitGroup
 	exit.Add(1)
@@ -27,30 +28,30 @@ func main() {
 	}
 
 	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip)
-	rt := kademlia.NewRoutingTable(&me)
-	kad := kademlia.NewKademlia(0, make(map[string]string)) // TODO: what does id do?
-	net := kademlia.NewNetwork(rt, kad, k, alpha)
+	rt := kademlia.NewRoutingTable(me)
+	net := kademlia.NewNetwork(rt, k, alpha)
+	kad := kademlia.NewKademlia(net)
 
-	// if this node is the entry node
-	if friend.Address == me.Address {
-		me.ID = friend.ID
+	// Start listening on network
+	utils.Log(1, "Listening on %s:%d", ip, port)
+	go net.Listen(ip, port)
+
+	// if this is bootsrap node
+	if me.Address == bootstrap.Address {
+		utils.Log(1, "Im the bootstrap node")
+		me.ID = bootstrap.ID
 	} else {
-		fmt.Println("Joining kademlia network...")
-		net.JoinNetwork(&friend)
-		fmt.Println("Kademlia network joined")
+		utils.Log(1, "Joining kademlia network...")
+		kad.JoinNetwork(&bootstrap)
+		utils.Log(1, "Kademlia network joined")
 	}
 
-	// Network
-	//go net.Listen(ip, 8000)
-
 	// CLI
-	local := cli.NewCLI(net, &exit)
+	local := cli.NewCLI(kad, &exit)
 	go local.Listen()
 
 	// RESTful API
 	// TODO: Implement restful api
 
 	exit.Wait()
-	fmt.Println("Your ip address is: ", ip)
-	fmt.Println("NODE TERMINATED")
 }

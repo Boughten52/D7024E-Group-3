@@ -27,10 +27,12 @@ type Network struct {
 	alpha int
 }
 
+// Create a new Network instance.
 func NewNetwork(rt *RoutingTable, k int, alpha int) *Network {
 	return &Network{rt, make(map[string]chan map[string]string), k, alpha}
 }
 
+// Listens for incoming messages on a specified port.
 func (network *Network) Listen(ip string, port int) {
 
 	// Resolve the UDP address to bind to
@@ -59,21 +61,43 @@ func (network *Network) Listen(ip string, port int) {
 		go func() {
 			values, err := protobuf.DeserializeMessage(buffer[:n])
 			if err != nil {
-				fmt.Println(err)
+				utils.LogError("Listen failed to deserialize message %s", err)
 				return
 			}
-
+			utils.Log(1, "Recieved %s message from %s", values["type"], values["sender_address"])
 			contact := NewContact(NewKademliaID(values["sender_id"]), values["sender_address"])
 
 			switch values["type"] {
 			case PING:
-				network.SendPingPongMessage(&contact, NewKademliaID(values["rpc_id"]), PONG)
+				network.SendPongMessage(&contact, NewKademliaID(values["rpc_id"]))
+
 			case FIND_NODE:
-				// TODO: Implement
+				contacts := ""
+				for _, node := range network.rt.FindClosestContacts(NewKademliaID(values["key"]), network.k) {
+					contacts += node.String() + "\n"
+				}
+
+				response := make(map[string]string)
+				response["rpc_id"] = values["rpc_id"]
+				response["sender_id"] = network.rt.me.ID.String()
+				response["sender_address"] = network.rt.me.Address
+				response["key"] = values["key"]
+				response["data"] = contacts
+				response["type"] = FIND_NODE_RESPONSE
+
+				data, err := protobuf.SerializeMessage(response)
+				if err != nil {
+					utils.LogError("Listen FIND_NODE could not serialize data %s", err)
+					return
+				}
+
+				utils.Log(1, "Sending %s message to %s", response["type"], values["sender_address"])
+				network.sendMessage(contact.Address, data)
+
 			case FIND_VALUE:
-				// TODO: Implement
+				// TODO: Similar to FIND_NODE, but return the value if found instead of contacts
 			case STORE:
-				// TODO: Implement
+				// TODO: Store the value locally on the node
 			default:
 				network.TransmitResponse(NewKademliaID(values["rpc_id"]), values)
 			}
@@ -85,13 +109,13 @@ func (network *Network) Listen(ip string, port int) {
 }
 
 // Sends a ping message to contact.
-func (network *Network) SendPingPongMessage(contact *Contact, rpcID *KademliaID, msgType string) {
+func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) {
 	// Create a map to hold the values for the Ping message
 	values := make(map[string]string)
 	values["rpc_id"] = rpcID.String()
 	values["sender_id"] = network.rt.me.ID.String()
 	values["sender_address"] = network.rt.me.Address
-	values["type"] = msgType
+	values["type"] = PING
 
 	data, err := protobuf.SerializeMessage(values)
 	if err != nil {
@@ -99,56 +123,94 @@ func (network *Network) SendPingPongMessage(contact *Contact, rpcID *KademliaID,
 		return
 	}
 
+	utils.Log(1, "Sending %s message to %s", PING, contact.Address)
 	network.sendMessage(contact.Address, data)
-
 }
 
-func (network *Network) SendFindContactMessage(id *KademliaID, nodes []Contact, rpcID *KademliaID) {
-	for _, node := range nodes {
-		// Create a map to hold the values for the FindContact message
-		values := make(map[string]string)
-		values["rpc_id"] = rpcID.String()
-		values["sender_id"] = network.rt.me.ID.String()
-		values["sender_address"] = network.rt.me.Address
-		values["key"] = id.String()
-		values["type"] = FIND_NODE
+// Sends a pong message to contact.
+func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the Ping message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["type"] = PONG
 
-		// Build message
-		data, err := protobuf.SerializeMessage(values)
-		if err != nil {
-			utils.LogError("SendFindContactMessage: could not build message (%s)", err)
-			return
-		}
-
-		// Send message
-		network.sendMessage(node.Address, data)
+	data, err := protobuf.SerializeMessage(values)
+	if err != nil {
+		utils.LogError("SendPingPongMessage: could not build message (%s)", err)
+		return
 	}
+
+	utils.Log(1, "Sending %s message to %s", PONG, contact.Address)
+	network.sendMessage(contact.Address, data)
 }
 
-func (network *Network) SendFindDataMessage(hash string, nodes []Contact, rpcID *KademliaID) {
-	for _, node := range nodes {
-		// Create a map to hold the values for the FindData message
-		values := make(map[string]string)
-		values["rpc_id"] = rpcID.String()
-		values["sender_id"] = network.rt.me.ID.String()
-		values["sender_address"] = network.rt.me.Address
-		values["key"] = hash
-		values["type"] = FIND_VALUE
+// Sends a find node message to contact.
+func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the FindContact message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["key"] = id.String()
+	values["type"] = FIND_NODE
 
-		// Build message
-		data, err := protobuf.SerializeMessage(values)
-		if err != nil {
-			utils.LogError("SendFindDataMessage: could not build message (%s)", err)
-			return
-		}
-
-		// Send message
-		network.sendMessage(node.Address, data)
+	// Build message
+	data, err := protobuf.SerializeMessage(values)
+	if err != nil {
+		utils.LogError("SendFindContactMessage: could not build message (%s)", err)
+		return
 	}
+
+	// Send message
+	utils.Log(1, "Sending %s message to %s", FIND_NODE, contact.Address)
+	network.sendMessage(contact.Address, data)
 }
 
-func (network *Network) SendStoreMessage(data []byte, rpcID *KademliaID) {
-	// TODO
+// Sends a find data message to contact.
+func (network *Network) SendFindDataMessage(key *KademliaID, contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the FindData message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["key"] = key.String()
+	values["type"] = FIND_VALUE
+
+	// Build message
+	data, err := protobuf.SerializeMessage(values)
+	if err != nil {
+		utils.LogError("SendFindDataMessage: could not build message (%s)", err)
+		return
+	}
+
+	// Send message
+	utils.Log(1, "Sending %s message to %s", FIND_VALUE, contact.Address)
+	network.sendMessage(contact.Address, data)
+}
+
+// Sends a store message to contact.
+func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the Store message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["key"] = key.String()
+	values["data"] = string(data)
+	values["type"] = STORE
+
+	// Build message
+	data, err := protobuf.SerializeMessage(values)
+	if err != nil {
+		utils.LogError("SendStoreMessage: could not build message (%s)", err)
+		return
+	}
+
+	// Send message
+	utils.Log(1, "Sending %s message to %s", STORE, contact.Address)
+	network.sendMessage(contact.Address, data)
 }
 
 // Sends a message to address.
@@ -192,7 +254,7 @@ func (network *Network) TransmitResponse(rpcID *KademliaID, response map[string]
 func (network *Network) CreateChannel(rpcID *KademliaID) chan map[string]string {
 	_, exist := network.coms[rpcID.String()]
 	if !exist {
-		network.coms[rpcID.String()] = make(chan map[string]string)
+		network.coms[rpcID.String()] = make(chan map[string]string, 50)
 	}
 
 	return network.coms[rpcID.String()]

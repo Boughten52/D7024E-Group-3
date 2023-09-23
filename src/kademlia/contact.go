@@ -1,7 +1,9 @@
 package kademlia
 
 import (
+	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 )
 
@@ -18,6 +20,22 @@ func NewContact(id *KademliaID, address string) Contact {
 	return Contact{id, address, nil}
 }
 
+func NewContactFromString(str string) (Contact, error) {
+	re := regexp.MustCompile(`contact\((.*?)\)`)
+
+	// Find the first match of the pattern in the input string
+	match := re.FindStringSubmatch(str)
+
+	// Check if a match was found
+	if len(match) > 1 {
+		// Split the elements string into a slice of elements
+		elements := regexp.MustCompile(`,\s*`).Split(match[1], -1)
+		return Contact{NewKademliaID(elements[0]), elements[1], NewKademliaID(elements[2])}, nil
+	}
+
+	return NewContact(NewRandomKademliaID(), "0"), errors.New("NewContactFromString: failed to extract data from string")
+}
+
 // CalcDistance calculates the distance to the target and
 // fills the contacts distance field
 func (contact *Contact) CalcDistance(target *KademliaID) {
@@ -31,7 +49,7 @@ func (contact *Contact) Less(otherContact *Contact) bool {
 
 // String returns a simple string representation of a Contact
 func (contact *Contact) String() string {
-	return fmt.Sprintf(`contact("%s", "%s")`, contact.ID, contact.Address)
+	return fmt.Sprintf(`contact(%s, %s, %s)`, contact.ID.String(), contact.Address, contact.distance.String())
 }
 
 // ContactCandidates definition
@@ -70,6 +88,21 @@ func (candidates *ContactCandidates) Swap(i, j int) {
 // the Contact at index j
 func (candidates *ContactCandidates) Less(i, j int) bool {
 	return candidates.contacts[i].Less(&candidates.contacts[j])
+}
+
+func (candidates *ContactCandidates) RemoveContact(contact *Contact) {
+	// Find the index of the element to remove
+	indexToRemove := -1
+	for i, val := range candidates.contacts {
+		if val == *contact {
+			indexToRemove = i
+			break
+		}
+	}
+
+	if indexToRemove != -1 {
+		candidates.contacts = append(candidates.contacts[:indexToRemove], candidates.contacts[indexToRemove+1:]...)
+	}
 }
 
 // Check if list contains target

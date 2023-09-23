@@ -4,18 +4,18 @@ import (
 	"fmt"
 )
 
-var severityThreshold int = 10
+var severityThreshold int = 1
 var errorPrefix string = "ERROR: "
 
 // Logs message if severity is above the threshold (10 = ERROR)
 func Log(severity int, format string, a ...any) {
-	if severity > severityThreshold {
-		fmt.Printf(format, a...)
+	if severity >= severityThreshold {
+		fmt.Printf(format+"\n", a...)
 	}
 }
 
 func LogError(format string, a ...any) {
-	if 10 > severityThreshold {
-		fmt.Printf(errorPrefix+format, a...)
+	if 10 >= severityThreshold {
+		fmt.Printf(errorPrefix+format+"\n", a...)
 	}
 }

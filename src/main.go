@@ -8,13 +8,12 @@ import (
 	"sync"
 )
 
-var bootstrap = kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "127.0.0.1:8000")
+var bootstrap = kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "172.20.0.10:80")
 var k = 20
 var alpha = 3
 var port = 80
 
 func main() {
-	utils.Log(1, "Initializing node")
 
 	// Prevent main from closing before user wants to terminate node
 	var exit sync.WaitGroup
@@ -27,7 +26,10 @@ func main() {
 		return
 	}
 
-	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip)
+	utils.Log(1, "Hello I exist and my ip is %s", ip)
+
+	address := fmt.Sprintf("%s:%d", ip, port)
+	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), address)
 	rt := kademlia.NewRoutingTable(me)
 	net := kademlia.NewNetwork(rt, k, alpha)
 	kad := kademlia.NewKademlia(net)

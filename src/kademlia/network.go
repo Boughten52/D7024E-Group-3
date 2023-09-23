@@ -19,6 +19,8 @@ const (
 	STORE               string = "store"
 )
 
+var mutex = &sync.Mutex{}
+
 type Network struct {
 	rt   *RoutingTable
 	coms map[string]chan map[string]string
@@ -216,19 +218,31 @@ func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *
 // Sends a message to address.
 func (network *Network) sendMessage(address string, data []byte) {
 	// Create UDP connection
-	conn, err := net.Dial("udp", address)
+	conn, err := net.Dial("udp", address+":80")
 	if err != nil {
-		fmt.Println("SendMessage: ", err)
+		fmt.Println("ERROR, SendMessage: error creating connection: ", err)
+		return
 	}
+	// Close connection
+	defer conn.Close()
 
 	// Write data to address
 	_, err = conn.Write(data)
 	if err != nil {
-		fmt.Println("SendMessage: ", err)
+		fmt.Printf("ERROR, SendMessage: could not write data with length %d\n", len(data))
+		fmt.Printf("ERROR, SendMessage: data is %s\n", data)
+		fmt.Println("ERROR, SendMessage: ", err)
+	} else {
+		fmt.Printf("SendMessage: data sent successfully with length %d\n", len(data))
 	}
 
-	// Close connection
-	conn.Close()
+	deconstructMsg, err := DeconstructMessage(data)
+	if err != nil {
+		fmt.Println("ERROR: SendMessage: could not deconstruct message \n%w", err)
+	}
+	for key, value := range deconstructMsg {
+		fmt.Printf("Key: %s, Value: %s\n", key, value)
+	}
 }
 
 // Listens on a specified channel for set amount of time before timing out.
@@ -243,6 +257,13 @@ func (network *Network) ListenWithTimeout(rpcID *KademliaID, sec int) (map[strin
 		return nil, fmt.Errorf("timeout occured")
 
 	}
+	fmt.Println("EVERYNYAN")
+	// Update routing table with sender
+	mutex.Lock()
+	fmt.Printf("Adding contact %s to routing table\n", contact.Address)
+	contact.CalcDistance(network.rt.me.ID)
+	network.rt.AddContact(contact)
+	mutex.Unlock()
 }
 
 // Sends data on a specified channel.

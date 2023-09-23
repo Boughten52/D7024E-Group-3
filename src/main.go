@@ -1,12 +1,11 @@
 package main
 
 import (
+	"d7024e/cli"
 	"d7024e/kademlia"
 	"d7024e/utils"
 	"fmt"
 	"sync"
-	"time"
-	//"net/http"
 )
 
 var bootstrap = kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "172.20.0.10:80")

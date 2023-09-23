@@ -12,17 +12,20 @@ services:
     image: kadlab:latest
     stdin_open: true
     tty: true
+    ports:
+      - "8001:80"
     networks:
       kademlia_network:
         ipv4_address: 172.20.0.10
+    container_name: entryNode
 
-  kademliaNodes: # These nodes join the network through the entry node
+  node: # These nodes join the network through the entry node
     image: kadlab:latest # Make sure your Docker image has this name.
     stdin_open: true
     tty: true
     deploy:
       mode: replicated
-      replicas: 9
+      replicas: 49
 #        resources:
 #           limits:
 #              cpus: "0.1"
@@ -32,8 +35,8 @@ services:
         delay: 5s
         max_attempts: 3
         window: 10s
-#    ports:
-#      - "4000:80"
+    ports:
+      - ":80"
     networks:
       - kademlia_network
       

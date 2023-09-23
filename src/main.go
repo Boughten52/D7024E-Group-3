@@ -1,20 +1,29 @@
 package main
 
 import (
-	"d7024e/cli"
 	"d7024e/kademlia"
 	"d7024e/utils"
 	"fmt"
 	"sync"
+	"time"
+	//"net/http"
 )
 
 func main() {
+	/*resp, err := http.Get("http://d7024e-group-3_kademlia_network-6")
+		if err != nil {
+	        panic(err)
+	    }*/
+
 	// Known contact to join network
-	friend := kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "127.0.0.1:8000")
+	friend := kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "172.20.0.10")
 	k := 20
 	alpha := 3
+	tExpire := 86400    // 24 hours
+	tRefresh := 3600    // 1 hour
+	tReplicate := 3600  // 1 hour
+	tRepublish := 86400 // 24 hours
 
-	fmt.Println("Initializing node...")
 	// Prevent main from closing before user wants to terminate node
 	var exit sync.WaitGroup
 	exit.Add(1)
@@ -29,28 +38,30 @@ func main() {
 	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip)
 	rt := kademlia.NewRoutingTable(&me)
 	kad := kademlia.NewKademlia(0, make(map[string]string)) // TODO: what does id do?
-	net := kademlia.NewNetwork(rt, kad, k, alpha)
+	net := kademlia.NewNetwork(rt, kad, k, alpha, tExpire, tRefresh, tReplicate, tRepublish)
 
-	// if this node is the entry node
+	// Network
+	go net.Listen(ip, 80)
+
+	// Check if entry node or not
 	if friend.Address == me.Address {
+		fmt.Println("Im the entry node")
 		me.ID = friend.ID
 	} else {
+		time.Sleep(10 * time.Second) // TODO: remove
+
 		fmt.Println("Joining kademlia network...")
 		net.JoinNetwork(&friend)
 		fmt.Println("Kademlia network joined")
 	}
 
-	// Network
-	//go net.Listen(ip, 8000)
-
 	// CLI
-	local := cli.NewCLI(net, &exit)
-	go local.Listen()
+	//local := cli.NewCLI(net, &exit)
+	//go local.Listen()
 
 	// RESTful API
 	// TODO: Implement restful api
 
 	exit.Wait()
-	fmt.Println("Your ip address is: ", ip)
 	fmt.Println("NODE TERMINATED")
 }

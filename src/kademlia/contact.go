@@ -1,6 +1,7 @@
 package kademlia
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -20,14 +21,28 @@ func NewContact(id *KademliaID, address string) Contact {
 }
 
 func NewContactFromString(str string) (Contact, error) {
-	re := regexp.MustCompile(`(\w+), (\w+)`)
-	info := re.FindStringSubmatch(str)
+	re := regexp.MustCompile(`contact\((.*?)\)`)
 
-	if len(info) < 2 {
-		return NewContact(NewKademliaID("0"), "0"), fmt.Errorf("NewContactFromString: failed to extract data from string")
+	// Find the first match of the pattern in the input string
+	match := re.FindStringSubmatch(str)
+
+	// Check if a match was found
+	if len(match) > 1 {
+		// Split the elements string into a slice of elements
+		elements := regexp.MustCompile(`,\s*`).Split(match[1], -1)
+		return Contact{NewKademliaID(elements[0]), elements[1], NewKademliaID(elements[2])}, nil
 	}
 
-	return NewContact(NewKademliaID(info[0]), info[1]), nil
+	return NewContact(NewRandomKademliaID(), "0"), errors.New("NewContactFromString: failed to extract data from string")
+}
+
+func Contains(list []Contact, target Contact) bool {
+	for _, item := range list {
+		if item.ID.Equals(target.ID) {
+			return true // Element found in the list
+		}
+	}
+	return false // Element not found in the list
 }
 
 // CalcDistance calculates the distance to the target and
@@ -43,7 +58,7 @@ func (contact *Contact) Less(otherContact *Contact) bool {
 
 // String returns a simple string representation of a Contact
 func (contact *Contact) String() string {
-	return fmt.Sprintf(`contact("%s", "%s")`, contact.ID, contact.Address)
+	return fmt.Sprintf(`contact(%s, %s, %s)`, contact.ID.String(), contact.Address, contact.distance.String())
 }
 
 // ContactCandidates definition

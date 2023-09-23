@@ -115,8 +115,14 @@ func (network *Network) Listen(ip string, port int) {
 	}
 	defer conn.Close()
 
+	// Set the buffer size for reading
+	err = conn.SetReadBuffer(16384)
+	if err != nil {
+		fmt.Println("Listen: set read buffer \n%w", err)
+	}
+
 	for {
-		buffer := make([]byte, 4096) // Adjust buffer size as needed
+		buffer := make([]byte, 16384) // Adjust buffer size as needed
 		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			fmt.Println("Error reading from UDP:", err)
@@ -126,7 +132,6 @@ func (network *Network) Listen(ip string, port int) {
 		// Handle incoming message in a separate goroutine
 		go network.handleMessage(buffer[:n])
 	}
-
 }
 
 /*
@@ -311,17 +316,28 @@ func sendMessage(address string, data []byte) {
 	// Create UDP connection
 	conn, err := net.Dial("udp", address+":80")
 	if err != nil {
-		fmt.Println("SendMessage: ", err)
+		fmt.Println("ERROR, SendMessage: error creating connection: ", err)
+		return
 	}
 	// Close connection
 	defer conn.Close()
 
 	// Write data to address
-	//fmt.Printf("SendMessage: sending data: %s\n", data)
 	_, err = conn.Write(data)
 	if err != nil {
-		//fmt.Printf("SendMessage: could not write data %s\n", data)
-		fmt.Println("SendMessage: ", err)
+		fmt.Printf("ERROR, SendMessage: could not write data with length %d\n", len(data))
+		fmt.Printf("ERROR, SendMessage: data is %s\n", data)
+		fmt.Println("ERROR, SendMessage: ", err)
+	} else {
+		fmt.Printf("SendMessage: data sent successfully with length %d\n", len(data))
+	}
+
+	deconstructMsg, err := DeconstructMessage(data)
+	if err != nil {
+		fmt.Println("ERROR: SendMessage: could not deconstruct message \n%w", err)
+	}
+	for key, value := range deconstructMsg {
+		fmt.Printf("Key: %s, Value: %s\n", key, value)
 	}
 }
 

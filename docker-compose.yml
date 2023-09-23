@@ -17,8 +17,9 @@ services:
     networks:
       kademlia_network:
         ipv4_address: 172.20.0.10
+    container_name: entryNode
 
-  kademliaNodes: # These nodes join the network through the entry node
+  node: # These nodes join the network through the entry node
     image: kadlab:latest # Make sure your Docker image has this name.
     stdin_open: true
     tty: true

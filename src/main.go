@@ -1,28 +1,19 @@
 package main
 
 import (
+	"d7024e/cli"
 	"d7024e/kademlia"
 	"d7024e/utils"
 	"fmt"
 	"sync"
-	"time"
-	//"net/http"
 )
 
-func main() {
-	/*resp, err := http.Get("http://d7024e-group-3_kademlia_network-6")
-		if err != nil {
-	        panic(err)
-	    }*/
+var bootstrap = kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "172.20.0.10:80")
+var k = 20
+var alpha = 3
+var port = 80
 
-	// Known contact to join network
-	friend := kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "172.20.0.10")
-	k := 20
-	alpha := 3
-	tExpire := 86400    // 24 hours
-	tRefresh := 3600    // 1 hour
-	tReplicate := 3600  // 1 hour
-	tRepublish := 86400 // 24 hours
+func main() {
 
 	// Prevent main from closing before user wants to terminate node
 	var exit sync.WaitGroup
@@ -35,33 +26,34 @@ func main() {
 		return
 	}
 
-	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), ip)
-	rt := kademlia.NewRoutingTable(&me)
-	kad := kademlia.NewKademlia(0, make(map[string]string)) // TODO: what does id do?
-	net := kademlia.NewNetwork(rt, kad, k, alpha, tExpire, tRefresh, tReplicate, tRepublish)
+	utils.Log(1, "Hello I exist and my ip is %s", ip)
 
-	// Network
-	go net.Listen(ip, 80)
+	address := fmt.Sprintf("%s:%d", ip, port)
+	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), address)
+	rt := kademlia.NewRoutingTable(me)
+	net := kademlia.NewNetwork(rt, k, alpha)
+	kad := kademlia.NewKademlia(net)
 
-	// Check if entry node or not
-	if friend.Address == me.Address {
-		fmt.Println("Im the entry node")
-		me.ID = friend.ID
+	// Start listening on network
+	utils.Log(1, "Listening on %s:%d", ip, port)
+	go net.Listen(ip, port)
+
+	// if this is bootsrap node
+	if me.Address == bootstrap.Address {
+		utils.Log(1, "Im the bootstrap node")
+		me.ID = bootstrap.ID
 	} else {
-		time.Sleep(10 * time.Second) // TODO: remove
-
-		fmt.Println("Joining kademlia network...")
-		net.JoinNetwork(&friend)
-		fmt.Println("Kademlia network joined")
+		utils.Log(1, "Joining kademlia network...")
+		kad.JoinNetwork(&bootstrap)
+		utils.Log(1, "Kademlia network joined")
 	}
 
 	// CLI
-	//local := cli.NewCLI(net, &exit)
-	//go local.Listen()
+	local := cli.NewCLI(kad, &exit)
+	go local.Listen()
 
 	// RESTful API
 	// TODO: Implement restful api
 
 	exit.Wait()
-	fmt.Println("NODE TERMINATED")
 }

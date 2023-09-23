@@ -36,15 +36,6 @@ func NewContactFromString(str string) (Contact, error) {
 	return NewContact(NewRandomKademliaID(), "0"), errors.New("NewContactFromString: failed to extract data from string")
 }
 
-func Contains(list []Contact, target Contact) bool {
-	for _, item := range list {
-		if item.ID.Equals(target.ID) {
-			return true // Element found in the list
-		}
-	}
-	return false // Element not found in the list
-}
-
 // CalcDistance calculates the distance to the target and
 // fills the contacts distance field
 func (contact *Contact) CalcDistance(target *KademliaID) {
@@ -97,4 +88,29 @@ func (candidates *ContactCandidates) Swap(i, j int) {
 // the Contact at index j
 func (candidates *ContactCandidates) Less(i, j int) bool {
 	return candidates.contacts[i].Less(&candidates.contacts[j])
+}
+
+func (candidates *ContactCandidates) RemoveContact(contact *Contact) {
+	// Find the index of the element to remove
+	indexToRemove := -1
+	for i, val := range candidates.contacts {
+		if val == *contact {
+			indexToRemove = i
+			break
+		}
+	}
+
+	if indexToRemove != -1 {
+		candidates.contacts = append(candidates.contacts[:indexToRemove], candidates.contacts[indexToRemove+1:]...)
+	}
+}
+
+// Check if list contains target
+func Contains(list []Contact, target Contact) bool {
+	for _, item := range list {
+		if item.ID.Equals(target.ID) {
+			return true // Element found in the list
+		}
+	}
+	return false // Element not found in the list
 }

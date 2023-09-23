@@ -1,16 +1,13 @@
 package utils
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"net"
 	"os"
 )
 
-/*
- * GetIP returns the ip of this machine
- *
- * @return tuple containing ip of this machine and error if any
- */
+// Returns the ip of this machine
 func GetIP() (string, error) {
 	// Get the hostname of the local machine
 	hostname, err := os.Hostname()
@@ -34,4 +31,11 @@ func GetIP() (string, error) {
 	}
 
 	return "", fmt.Errorf("GetIP: no ip address could be linked to this machine")
+}
+
+// Hashes a byte array using sha-1 and returns a 160-bit string (20 bytes)
+func Hash(data []byte) string {
+	hasher := sha1.New()
+	hasher.Write(data)
+	return fmt.Sprintf("%x", hasher.Sum(nil))
 }

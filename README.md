@@ -119,3 +119,21 @@ When we want to enter the running Go program, we instead use attach:
 ```
 sudo docker attach <NAME/ID>
 ```
+
+# Generate HTML Coverage Report
+
+## Run test with coverage
+First, enter the `src` directory.
+```
+cd PATH_TO_DIRECTORY\D7024E-Group-3\src
+```
+To run your tests with coverage analysis, use the `go test` command with the `-cover flag`
+```
+go test -cover ./...
+```
+The `./...` argument tells Go to recursively run tests in all packages within the current directory and its subdirectories.
+Then run
+```
+go tool cover -html=coverage.out -o coverage.html
+```
+to generate an HTML coverage report to visualize the coverage in more detail.

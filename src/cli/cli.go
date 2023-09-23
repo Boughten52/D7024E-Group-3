@@ -10,12 +10,12 @@ import (
 )
 
 type CLI struct {
-	network  *kademlia.Network
+	kademlia *kademlia.Kademlia
 	syncExit *sync.WaitGroup
 }
 
-func NewCLI(network *kademlia.Network, exit *sync.WaitGroup) CLI {
-	return CLI{network, exit}
+func NewCLI(kademlia *kademlia.Kademlia, exit *sync.WaitGroup) CLI {
+	return CLI{kademlia, exit}
 }
 
 // TODO: Implement
@@ -52,16 +52,11 @@ func (cli *CLI) Listen() {
 }
 
 func (cli *CLI) put(content string) {
-	fmt.Println("Succesfully stored '", content, "'")
-	//fmt.Println("Succesfully stored '", content, "' with the key: ", cli.network.Put(content))
+	// TODO: Implement
 }
 
 func (cli *CLI) get(hash string) {
-	res, err := cli.network.Get(hash)
-	if err != nil {
-		fmt.Println("Could not retrieve content...")
-	}
-	fmt.Println("Content: ", res)
+	// TODO: Implement
 }
 
 func (cli *CLI) forget(hash string) {

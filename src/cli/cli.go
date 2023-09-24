@@ -14,11 +14,12 @@ type CLI struct {
 	syncExit *sync.WaitGroup
 }
 
+// Create a new CLI instance.
 func NewCLI(kademlia *kademlia.Kademlia, exit *sync.WaitGroup) CLI {
 	return CLI{kademlia, exit}
 }
 
-// TODO: Implement
+// Listen for user input and execute commands.
 func (cli *CLI) Listen() {
 
 	stdin := bufio.NewReader(os.Stdin)
@@ -51,8 +52,10 @@ func (cli *CLI) Listen() {
 	}
 }
 
+// Handle put command by storing content on the network.
 func (cli *CLI) put(content string) {
-	// TODO: Implement
+	hash := cli.kademlia.Store([]byte(content))
+	fmt.Println("Stored content with hash", hash)
 }
 
 func (cli *CLI) get(hash string) {
@@ -63,6 +66,7 @@ func (cli *CLI) forget(hash string) {
 	// TODO: Implement
 }
 
+// Handle exit command by exiting the program.
 func (cli *CLI) exit() {
 	cli.syncExit.Done()
 }

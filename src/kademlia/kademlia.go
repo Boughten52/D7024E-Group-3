@@ -70,8 +70,10 @@ func (kademlia *Kademlia) Store(data []byte) string {
 	closestContacts, _ := kademlia.nodeLookup(key, STORE)
 
 	// Store data on closest contacts
+	utils.Log(1, "Closest contacts found to %v to store data at:", key)
 	for _, contact := range closestContacts {
 		kademlia.network.SendStoreMessage(key, data, &contact, NewRandomKademliaID())
+		utils.Log(1, "%v, %v", contact.Address, contact.ID)
 	}
 
 	return hash

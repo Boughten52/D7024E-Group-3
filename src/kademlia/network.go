@@ -20,8 +20,9 @@ const (
 )
 
 type Network struct {
-	rt   *RoutingTable
-	coms map[string]chan map[string]string
+	rt      *RoutingTable
+	storage *Storage
+	coms    map[string]chan map[string]string
 
 	k     int
 	alpha int
@@ -29,7 +30,7 @@ type Network struct {
 
 // Create a new Network instance.
 func NewNetwork(rt *RoutingTable, k int, alpha int) *Network {
-	return &Network{rt, make(map[string]chan map[string]string), k, alpha}
+	return &Network{rt, &Storage{make(map[string][]byte)}, make(map[string]chan map[string]string), k, alpha}
 }
 
 // Listens for incoming messages on a specified port.
@@ -97,7 +98,8 @@ func (network *Network) Listen(ip string, port int) {
 			case FIND_VALUE:
 				// TODO: Similar to FIND_NODE, but return the value if found instead of contacts
 			case STORE:
-				// TODO: Store the value locally on the node
+				network.storage.StoreData(values["key"], []byte(values["data"]))
+
 			default:
 				network.TransmitResponse(NewKademliaID(values["rpc_id"]), values)
 			}

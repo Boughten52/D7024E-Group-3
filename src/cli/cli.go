@@ -35,11 +35,13 @@ func (cli *CLI) Listen() {
 		fmt.Println("")
 
 		text, _ := stdin.ReadString('\n')
+		text = strings.TrimRight(text, "\n")
 		args := strings.SplitN(text, " ", 2)
 
 		switch {
 		case text == "exit":
 			cli.exit()
+			return
 		case args[0] == "put" && len(args) > 1:
 			cli.put(args[1])
 		case args[0] == "get" && len(args) > 1:
@@ -58,8 +60,19 @@ func (cli *CLI) put(content string) {
 	fmt.Println("Stored content with hash", hash)
 }
 
+// Handle get command by retrieving data from the network.
 func (cli *CLI) get(hash string) {
-	// TODO: Implement
+	if len([]byte(hash)) != 40 {
+		fmt.Printf("Expected hash length of 20 but got %d", len([]byte(hash)))
+		return
+	}
+
+	data := cli.kademlia.LookupData(hash)
+	if data == nil {
+		fmt.Println("Data not found")
+	} else {
+		fmt.Println("Data:", string(data))
+	}
 }
 
 func (cli *CLI) forget(hash string) {

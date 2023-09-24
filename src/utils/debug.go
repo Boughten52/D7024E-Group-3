@@ -14,6 +14,7 @@ func Log(severity int, format string, a ...any) {
 	}
 }
 
+// Logs error message.
 func LogError(format string, a ...any) {
 	if 10 >= severityThreshold {
 		fmt.Printf(errorPrefix+format+"\n", a...)

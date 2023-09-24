@@ -73,9 +73,14 @@ func (network *Network) Listen(ip string, port int) {
 				network.SendPongMessage(&contact, NewKademliaID(values["rpc_id"]))
 
 			case FIND_NODE:
-				contacts := ""
-				for _, node := range network.rt.FindClosestContacts(NewKademliaID(values["key"]), network.k) {
-					contacts += node.String() + "\n"
+				network.sendFindContactResponseMessage(values, &contact)
+
+			case FIND_VALUE:
+				// Similar to FIND_NODE, but return the value if found instead of contacts
+				data, exist := network.storage.FetchData(values["key"])
+				if !exist {
+					network.sendFindContactResponseMessage(values, &contact)
+					break
 				}
 
 				response := make(map[string]string)
@@ -83,20 +88,18 @@ func (network *Network) Listen(ip string, port int) {
 				response["sender_id"] = network.rt.me.ID.String()
 				response["sender_address"] = network.rt.me.Address
 				response["key"] = values["key"]
-				response["data"] = contacts
-				response["type"] = FIND_NODE_RESPONSE
+				response["data"] = string(data)
+				response["type"] = FIND_VALUE_RESPONSE
 
 				data, err := protobuf.SerializeMessage(response)
 				if err != nil {
-					utils.LogError("Listen FIND_NODE could not serialize data %s", err)
+					utils.LogError("Listen FIND_VALUE could not serialize data %s", err)
 					return
 				}
 
 				utils.Log(1, "Sending %s message to %s", response["type"], values["sender_address"])
 				network.sendMessage(contact.Address, data)
 
-			case FIND_VALUE:
-				// TODO: Similar to FIND_NODE, but return the value if found instead of contacts
 			case STORE:
 				network.storage.StoreData(values["key"], []byte(values["data"]))
 
@@ -212,6 +215,31 @@ func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *
 
 	// Send message
 	utils.Log(1, "Sending %s message to %s", STORE, contact.Address)
+	network.sendMessage(contact.Address, data)
+}
+
+// Sends a find node response message to contact.
+func (network *Network) sendFindContactResponseMessage(values map[string]string, contact *Contact) {
+	contacts := ""
+	for _, node := range network.rt.FindClosestContacts(NewKademliaID(values["key"]), network.k) {
+		contacts += node.String() + "\n"
+	}
+
+	response := make(map[string]string)
+	response["rpc_id"] = values["rpc_id"]
+	response["sender_id"] = network.rt.me.ID.String()
+	response["sender_address"] = network.rt.me.Address
+	response["key"] = values["key"]
+	response["data"] = contacts
+	response["type"] = FIND_NODE_RESPONSE
+
+	data, err := protobuf.SerializeMessage(response)
+	if err != nil {
+		utils.LogError("Listen %s could not serialize data %s", values["type"], err)
+		return
+	}
+
+	utils.Log(1, "Sending %s message to %s", response["type"], values["sender_address"])
 	network.sendMessage(contact.Address, data)
 }
 

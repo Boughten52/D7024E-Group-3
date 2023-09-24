@@ -8,6 +8,7 @@ import (
 )
 
 var shortListMutex = &sync.RWMutex{}
+var respondedNodesMutex = &sync.RWMutex{}
 
 type Kademlia struct {
 	network   *Network
@@ -54,9 +55,19 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) {
 func (kademlia *Kademlia) LookupData(hash string) []byte {
 	utils.Log(1, "Looking up data for hash %v", hash)
 
-	_, dataResult := kademlia.nodeLookup(NewKademliaID(hash), FIND_VALUE)
+	closestContactsWithoutValue, dataResult := kademlia.nodeLookup(NewKademliaID(hash), FIND_VALUE)
 
-	// TODO: Store data on the closest contact that didn't return the data
+	if dataResult != nil && len(closestContactsWithoutValue) > 0 {
+		utils.Log(1, "Closest contacts found to %v after data lookup that didn't return value:", hash)
+		for _, contact := range closestContactsWithoutValue {
+			utils.Log(1, "%v, %v", contact.Address, contact.ID)
+		}
+
+		// Store data on closest contact that didn't return the value (cache it)
+		utils.Log(1, "Storing data %v on closest contact that didn't return the value", dataResult)
+		utils.Log(1, "%v, %v", closestContactsWithoutValue[0].Address, closestContactsWithoutValue[0].ID)
+		kademlia.network.SendStoreMessage(NewKademliaID(hash), dataResult, &closestContactsWithoutValue[0], NewRandomKademliaID())
+	}
 
 	return dataResult
 }
@@ -82,8 +93,13 @@ func (kademlia *Kademlia) Store(data []byte) string {
 // Perform a node lookup on the network.
 func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Contact, []byte) {
 
+	var data []byte
+	var closerFound chan bool
+	dataFound := make(chan []byte, kademlia.network.alpha)
+
 	// Pick the alpha closest nodes to the target ID from the buckets and add to shortList.
 	shortList := ContactCandidates{kademlia.network.rt.FindClosestContacts(target, kademlia.network.alpha)}
+
 	utils.Log(1, "Shortlist at start of nodeLookup:")
 	for _, contact := range shortList.contacts {
 		utils.Log(1, "%v, %v", contact.Address, contact.ID)
@@ -92,24 +108,29 @@ func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Conta
 	// Create a list of nodes that have already been contacted.
 	contactedNodes := ContactCandidates{make([]Contact, 0)}
 
-	var data []byte
+	// Create a list of nodes that have responded but not returned a value.
+	respondedNodesWithoutValue := ContactCandidates{make([]Contact, 0)}
 
+OUTER_LOOP:
 	for {
 		var iterativeSync sync.WaitGroup
-		closerFound := make(chan bool, kademlia.network.alpha)
+
+		closerFound = make(chan bool, kademlia.network.alpha)
 
 		// Filter out nodes that are already in contactedNodes
 		alphaNodes := ContactCandidates{make([]Contact, 0)}
 		allNodesContacted := true
+		shortListMutex.RLock()
 		for _, node := range shortList.contacts {
 			if !Contains(contactedNodes.contacts, node) && !node.ID.Equals(kademlia.network.rt.me.ID) {
 				alphaNodes.Append([]Contact{node})
 				allNodesContacted = false
 			}
 		}
+		shortListMutex.RUnlock()
 
-		// For FIND_NODE and STORE, terminate when all nodes have been contacted.
-		if allNodesContacted && (opType == FIND_NODE || opType == STORE) {
+		// Terminate when all nodes have been contacted.
+		if allNodesContacted {
 			break
 		}
 
@@ -130,14 +151,27 @@ func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Conta
 				kademlia.network.SendFindDataMessage(target, &node, rpcID)
 			}
 
-			go kademlia.waitForResponse(&iterativeSync, closerFound, rpcID, &shortList, &node)
+			go kademlia.waitForResponse(&iterativeSync, closerFound, dataFound, rpcID, &shortList, &respondedNodesWithoutValue, &node)
 		}
 		contactedNodes.Append(alphaNodes.contacts)
 
 		// Loose parallelism
 		time.Sleep(5 * time.Second)
 
-		iterativeSync.Wait()
+		// Wait for a response from the alpha closest nodes in state.
+		data = waitForFastest(&iterativeSync, dataFound)
+		if data != nil {
+			utils.Log(1, "Recieved FIND_VALUE_RESPONSE from node, Im done searching")
+			respondedNodesMutex.Lock()
+			respondedNodesWithoutValue.Sort()
+			shortListMutex.Lock()
+			shortList = ContactCandidates{respondedNodesWithoutValue.contacts}
+			shortListMutex.Unlock()
+			respondedNodesMutex.Unlock()
+			break OUTER_LOOP
+		}
+
+		// If a closer node was found, set a flag that tells us to keep iterating
 		closerFoundFlag := false
 		for value := range closerFound {
 			if value {
@@ -149,7 +183,7 @@ func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Conta
 		// Otherwise, send a find node message to the k closest nodes in state that have not been contacted yet.
 		if !closerFoundFlag {
 			var iterativeSync sync.WaitGroup
-			closerFound := make(chan bool, kademlia.network.k)
+			closerFound = make(chan bool, kademlia.network.k)
 			for _, node := range shortList.contacts {
 				rpcID := NewRandomKademliaID()
 
@@ -160,12 +194,23 @@ func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Conta
 						kademlia.network.SendFindDataMessage(target, &node, rpcID)
 					}
 					contactedNodes.Append([]Contact{node})
+					go kademlia.waitForResponse(&iterativeSync, closerFound, dataFound, rpcID, &shortList, &respondedNodesWithoutValue, &node)
 				}
 
-				go kademlia.waitForResponse(&iterativeSync, closerFound, rpcID, &shortList, &node)
 			}
 
-			iterativeSync.Wait()
+			// Wait for a response from the k closest nodes in state.
+			data = waitForFastest(&iterativeSync, dataFound)
+			if data != nil {
+				utils.Log(1, "Recieved FIND_VALUE_RESPONSE from node, Im done searching")
+				respondedNodesMutex.Lock()
+				respondedNodesWithoutValue.Sort()
+				shortListMutex.Lock()
+				shortList = ContactCandidates{respondedNodesWithoutValue.contacts}
+				shortListMutex.Unlock()
+				respondedNodesMutex.Unlock()
+				break OUTER_LOOP
+			}
 		}
 	}
 
@@ -173,9 +218,9 @@ func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Conta
 }
 
 // Wait for a response from a node. If no response is received within 10 seconds, remove the node from the short list.
-func (kademlia *Kademlia) waitForResponse(waitGroup *sync.WaitGroup, status chan bool, rpcID *KademliaID, shortList *ContactCandidates, node *Contact) {
+func (kademlia *Kademlia) waitForResponse(iterWait *sync.WaitGroup, status chan bool, data chan []byte, rpcID *KademliaID, shortList *ContactCandidates, respondedNodesWithoutValue *ContactCandidates, node *Contact) {
 
-	waitGroup.Add(1)
+	iterWait.Add(1)
 	// Wait for 10 sec if no response remove node from short list
 	response, err := kademlia.network.ListenWithTimeout(rpcID, 10)
 	if err != nil {
@@ -184,11 +229,24 @@ func (kademlia *Kademlia) waitForResponse(waitGroup *sync.WaitGroup, status chan
 		shortListMutex.Unlock()
 
 		status <- false
-		waitGroup.Done()
+		iterWait.Done()
 		return
 	}
 
-	// TODO: If response contains stored data, terminate and return it to the caller
+	// If response contains stored data, terminate and return it to the caller
+	if response["type"] == FIND_VALUE_RESPONSE {
+		data <- []byte(response["data"])
+		//dataWait.Done()
+		iterWait.Done()
+		return
+	}
+
+	// Node responded and it wasn't a FIND_VALUE_RESPONSE, add it to respondedNodesWithoutValue
+	respondedNodesMutex.Lock()
+	if !Contains(respondedNodesWithoutValue.contacts, *node) && response["type"] != FIND_VALUE_RESPONSE {
+		respondedNodesWithoutValue.Append([]Contact{*node})
+	}
+	respondedNodesMutex.Unlock()
 
 	// Extract nodes from message
 	responeContacts := []Contact{}
@@ -218,12 +276,12 @@ func (kademlia *Kademlia) waitForResponse(waitGroup *sync.WaitGroup, status chan
 		utils.Log(1, "At least one node was replaced, looping again")
 
 		status <- false
-		waitGroup.Done()
+		iterWait.Done()
 		return
 	}
 
 	status <- true
-	waitGroup.Done()
+	iterWait.Done()
 }
 
 // Update the short list with new contacts.
@@ -248,4 +306,38 @@ func updateShortList(shortList *ContactCandidates, newContacts []Contact, k int)
 		}
 	}
 	return nodesReplaced
+}
+
+// Wait for the fastest response from a node.
+func waitForFastest(wg *sync.WaitGroup, ch chan []byte) (data []byte) {
+	done := make(chan struct{})
+	var lock = &sync.Mutex{}
+	closed := false
+
+	go func(group *sync.WaitGroup) {
+		group.Wait()
+		lock.Lock()
+		if closed {
+			lock.Unlock()
+			return
+		}
+		close(done)
+		closed = true
+		lock.Unlock()
+	}(wg)
+
+	go func(channel chan []byte) {
+		data = <-channel
+		lock.Lock()
+		if closed {
+			lock.Unlock()
+			return
+		}
+		close(done)
+		closed = true
+		lock.Unlock()
+	}(ch)
+
+	<-done
+	return data
 }

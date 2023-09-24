@@ -11,7 +11,7 @@ docker build . -t kadlab
 ```
 Start the network of containers:
 ```
-docker-compose up -d   
+docker compose up -d   
 ```
 Enter the shell environment of any node by running:
 ```
@@ -21,23 +21,17 @@ To enter the Go program directly, we instead run:
 ```
 docker attach <node-name>
 ```
+To see the logs of a node:
+```
+docker logs <node-name>
+```
 
 An example of a node name is d7024e-group-3-kademliaNodes-1.
 
-We have installed the ping command to the image, which makes it possible to message other nodes in the network by typing:
-```
-ping <node-name>
-```
-
 # Deploy to DUST VM
-Please note that any pushes to `main`, either directly or via pull requests, will result in an automatic deployment to the DUST VM. The deployment is done by a GitHub Action, which builds the Docker image and deploys a Docker stack to the server. The Docker stack is defined in the `docker-compose.yml` file, and the stack is called `kademliaStack`. The stack contains a network called `kademliaStack_kademlia_network` and a service called `kademliaStack_kademliaNodes`. The service contains 50 replicas, which means that 50 containers will be created.
+Any pushes to `main`, either directly or via pull requests, will result in an automatic deployment to the DUST VM. The deployment is performed by a GitHub Action (see `.github/workflows/main.yml`), which builds the Docker image and deploys the Docker containers accoring to the `docker-compose.yml` file.
 
-Below follow instructions for how to manually deploy the source code, build the image and deploy the stack.
-
-## Deploy the source code
-Note that all code on the server can be edited using editors such as Vim, but this is bad practice in our case since we don't have any backups of the server. Thus, all code should be edited locally and commited to GitHub, and then deployed to the server using the method described below.
-
-We copy the directory (D7024E-Group-3) containing the source code to the server by using SCP (note that we place the directory in /home/martinaskolin, which is the directory you land in when logging in):
+The code can also be copied to the server manually via SSH:
 ```
 scp -r -P 27001 PATH_TO_DIRECTORY\D7024E-Group-3\ martinaskolin@130.240.207.20:/home/martinaskolin/
 ```
@@ -45,95 +39,32 @@ The server is then reached via:
 ```
 ssh -p 27001 martinaskolin@130.240.207.20
 ```
+All Docker commands that are available locally, can also be executed on the server. Before starting new containers, the old ones should be removed. Same goes for the image.
 
-## Build the image (Dockerfile)
-Note that the Docker image only has to be rebuilt if the Dockerfile has changed.
-
-To rebuild an image, go to the D7024E-Group-3 directory on the server and run:
-```
-sudo docker build . -t kadlab
-```
-You can check the status of all images by running:
-```
-sudo docker images
-```
-To delete the image, run:
-```
-sudo docker image rm kadlab
-```
-If there are containers in the stack that need to be updated with the latest image, run:
-```
-sudo docker service update --image kadlab:latest STACKNAME_kademliaNodes
-```
-
-## Deploy Docker stack (docker-compose.yml)
-This section refers to starting a Swarm and stack for the first time. If a Swarm and stack is already running, and you have made changes to the docker-compose.yml file that you want to deploy, ignore the rest of this section and simply run the following command in the D7024E-Group-3 directory on the server:
-```
-sudo docker stack deploy -c docker-compose.yml STACKNAME
-```
-If you instead want to start a Swarm and stack, follow the steps below:
-
-To start a network of replicas, we need to deploy a stack from the docker-compose.yml file.
-
-The first step to deploying a stack requires that a Swarm is running and that the current node is a Swarm manager, which is initialized with:
-```
-sudo docker swarm init
-```
-You can check the status by listing all nodes in a Swarm:
-```
-sudo docker node ls
-```
-Then, enter the directory /home/martinaskolin/D7024E-Group-3 which contains the docker-compose.yml file, and deploy the stack by running:
-```
-sudo docker stack deploy -c docker-compose.yml STACKNAME
-```
-This will create a network called STACKNAME_kademlia_network and a service called STACKNAME_kademliaNodes (replace STACKNAME with an appropriate name). The replicas-variable in docker-compose.yml states how many containers will be created.
-
-To list all containers in a stack, run:
-```
-sudo docker stack ps STACKNAME
-```
-
-You can list and remove stacks, services and networks with the following commands:
-```
-sudo docker stack ls
-sudo docker stack rm STACKNAME
-
-sudo docker service ls
-sudo docker service rm SERVICENAME
-
-sudo docker network ls
-sudo docker network rm NETWORKNAME
-```
-
-## Enter a container
-To enter containers like we do when running locally, we first need to figure out their names or ID:s. We do that by running this command:
+Commands flags such as `ls` and `rm` are useful for listing and removing entities, such as listing all existing containers:
 ```
 sudo docker container ls
-```
-We can then use either name or ID to enter a container's bash environment:
-```
-sudo docker exec -it <NAME/ID> sh
-```
-When we want to enter the running Go program, we instead use attach:
-```
-sudo docker attach <NAME/ID>
 ```
 
 # Generate HTML Coverage Report
 
 ## Run test with coverage
-First, enter the `src` directory.
+First, enter the `src` directory:
 ```
 cd PATH_TO_DIRECTORY\D7024E-Group-3\src
 ```
-To run your tests with coverage analysis, use the `go test` command with the `-cover flag`
+To run your tests with coverage analysis, use the `go test` command with the `-cover flag`:
 ```
-go test -cover ./...
+go test -cover ./... -coverprofile=c.out
 ```
 The `./...` argument tells Go to recursively run tests in all packages within the current directory and its subdirectories.
-Then run
+
+Then run:
 ```
-go tool cover -html=coverage.out -o coverage.html
+go tool cover -html=c -o coverage.html
+```
+or
+```
+go tool cover -html=c
 ```
 to generate an HTML coverage report to visualize the coverage in more detail.

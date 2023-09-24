@@ -56,4 +56,5 @@ func main() {
 	// TODO: Implement restful api
 
 	exit.Wait()
+	utils.Log(3, "NODE TERMINATED")
 }

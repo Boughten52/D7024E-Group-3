@@ -46,6 +46,13 @@ Commands flags such as `ls` and `rm` are useful for listing and removing entitie
 sudo docker container ls
 ```
 
+# Debugging Docker Containers
+## Check containers for certain log
+By combining three commands using bash's pipes you can fetch (A.K.A. `grep`) all instances of a logged message:
+```
+docker ps --format "{{.Names}}" | xargs -I {} docker logs {} | grep ERROR
+```
+
 # Generate HTML Coverage Report
 
 ## Run test with coverage
@@ -53,18 +60,19 @@ First, enter the `src` directory:
 ```
 cd PATH_TO_DIRECTORY\D7024E-Group-3\src
 ```
-To run your tests with coverage analysis, use the `go test` command with the `-cover flag`:
+To run your tests with coverage analysis, use the `go test` command and write it to `coverage.out`:
 ```
-go test -cover ./... -coverprofile=c.out
+go test -coverprofile=coverage.out ./...
 ```
 The `./...` argument tells Go to recursively run tests in all packages within the current directory and its subdirectories.
 
-Then run:
+In order to get the total coverage write the following command:
 ```
-go tool cover -html=c -o coverage.html
+go tool cover -func=coverage
 ```
-or
+
+## Create HTML coverage report
+In order to create a HTML coverage report to visualize the coverage in more detail write the following command:
 ```
-go tool cover -html=c
+go tool cover -html=coverage -o coverage.html
 ```
-to generate an HTML coverage report to visualize the coverage in more detail.

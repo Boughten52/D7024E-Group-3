@@ -5,8 +5,12 @@ import (
 	"d7024e/utils"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 )
+
+// Mutex
+var mComs sync.RWMutex
 
 // Defines the different message types sent over the network.
 const (
@@ -282,18 +286,22 @@ func (network *Network) TransmitResponse(rpcID *KademliaID, response map[string]
 
 // Creates channel for rpc id if a channel does not already exist.
 func (network *Network) CreateChannel(rpcID *KademliaID) chan map[string]string {
+	mComs.Lock()
 	_, exist := network.coms[rpcID.String()]
 	if !exist {
 		network.coms[rpcID.String()] = make(chan map[string]string, 50)
 	}
+	mComs.Unlock()
 
 	return network.coms[rpcID.String()]
 }
 
 // Deletes channel for rpc id if it exists.
 func (network *Network) RemoveChannel(rpcID *KademliaID) {
+	mComs.Lock()
 	_, exist := network.coms[rpcID.String()]
 	if exist {
 		delete(network.coms, rpcID.String())
 	}
+	mComs.Unlock()
 }

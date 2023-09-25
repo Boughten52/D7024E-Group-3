@@ -235,8 +235,8 @@ func (kademlia *Kademlia) waitForResponse(iterWait *sync.WaitGroup, status chan 
 
 	// If response contains stored data, terminate and return it to the caller
 	if response["type"] == FIND_VALUE_RESPONSE {
+		utils.Log(1, "waitForResponse: got value from node: %s", node.Address)
 		data <- []byte(response["data"])
-		//dataWait.Done()
 		iterWait.Done()
 		return
 	}

@@ -11,6 +11,7 @@ import (
 
 // Mutex
 var mComs sync.RWMutex
+var mRoutingtable sync.RWMutex
 
 // Defines the different message types sent over the network.
 const (
@@ -112,7 +113,9 @@ func (network *Network) Listen(ip string, port int) {
 			}
 
 			// Update routing table with sender
+			mRoutingtable.Lock()
 			network.rt.AddContact(contact)
+			mRoutingtable.Unlock()
 		}()
 	}
 }

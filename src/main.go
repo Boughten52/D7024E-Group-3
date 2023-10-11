@@ -1,6 +1,7 @@
 package main
 
 import (
+	"d7024e/api"
 	"d7024e/cli"
 	"d7024e/kademlia"
 	"d7024e/utils"
@@ -53,7 +54,7 @@ func main() {
 	go local.Listen()
 
 	// RESTful API
-	// TODO: Implement restful api
+	go api.StartServer(kad, port)
 
 	exit.Wait()
 	utils.Log(3, "NODE TERMINATED")

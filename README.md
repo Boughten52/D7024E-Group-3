@@ -62,7 +62,7 @@ cd PATH_TO_DIRECTORY\D7024E-Group-3\src
 ```
 To run your tests with coverage analysis, use the `go test` command and write it to `coverage.out`:
 ```
-go test -coverprofile=coverage.out ./...
+go test -coverprofile=coverage ./...
 ```
 The `./...` argument tells Go to recursively run tests in all packages within the current directory and its subdirectories.
 
@@ -75,4 +75,26 @@ go tool cover -func=coverage
 In order to create a HTML coverage report to visualize the coverage in more detail write the following command:
 ```
 go tool cover -html=coverage -o coverage.html
+```
+
+# Using the RESTful API
+Locally, using Windows PowerShell, we can use the following commands to interact with the API:
+```powershell
+# POST to a node
+Invoke-RestMethod -Method Post -Uri "http://localhost:PORT/objects" -Body '{"data": "DATA"}' -ContentType "application/json"
+
+# GET from a node
+$hash = HASH
+Invoke-RestMethod -Method Get -Uri "http://localhost:PORT/objects/$hash"
+```
+
+Replacing `PORT` with the port of the node we want to interact with, `DATA` with the data to store, and `HASH` with the hash of the object we want to retrieve.
+
+Remotely, we use the curl command:
+```bash
+# POST to a node
+curl -X POST -H "Content-Type: application/json" -d '{"data": "DATA"}' http://ADDRESS:PORT/objects
+
+# GET from a node
+curl http://ADDRESS:PORT/objects/HASH
 ```

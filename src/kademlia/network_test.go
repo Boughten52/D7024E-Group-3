@@ -2,12 +2,13 @@ package kademlia
 
 import (
 	"testing"
+	"time"
 )
 
 func TestSendMessage(t *testing.T) {
 	me := NewContact(NewRandomKademliaID(), "172.20.0.10:80")
 	rt := NewRoutingTable(me)
-	net := NewNetwork(rt, 20, 3)
+	net := NewNetwork(rt, 20, 3, time.Second*60)
 	contact := NewContact(NewRandomKademliaID(), "172.20.0.10:80")
 	values := make(map[string]string)
 	values["rpc_id"] = NewRandomKademliaID().String()
@@ -28,7 +29,7 @@ func TestSendMessage(t *testing.T) {
 func TestComs(t *testing.T) {
 	me := NewContact(NewRandomKademliaID(), "172.20.0.10:80")
 	rt := NewRoutingTable(me)
-	net := NewNetwork(rt, 20, 3)
+	net := NewNetwork(rt, 20, 3, time.Second*60)
 	rpc := NewRandomKademliaID()
 
 	values := make(map[string]string)

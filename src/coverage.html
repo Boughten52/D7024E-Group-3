@@ -57,19 +57,19 @@
 				
 				<option value="file0">d7024e/cli/cli.go (13.3%)</option>
 				
-				<option value="file1">d7024e/kademlia/bucket.go (84.2%)</option>
+				<option value="file1">d7024e/kademlia/bucket.go (100.0%)</option>
 				
 				<option value="file2">d7024e/kademlia/contact.go (100.0%)</option>
 				
-				<option value="file3">d7024e/kademlia/kademlia.go (0.0%)</option>
+				<option value="file3">d7024e/kademlia/kademlia.go (34.1%)</option>
 				
 				<option value="file4">d7024e/kademlia/kademliaid.go (95.5%)</option>
 				
-				<option value="file5">d7024e/kademlia/network.go (0.0%)</option>
+				<option value="file5">d7024e/kademlia/network.go (57.2%)</option>
 				
-				<option value="file6">d7024e/kademlia/routingtable.go (93.1%)</option>
+				<option value="file6">d7024e/kademlia/routingtable.go (100.0%)</option>
 				
-				<option value="file7">d7024e/kademlia/storage.go (100.0%)</option>
+				<option value="file7">d7024e/kademlia/storage.go (78.6%)</option>
 				
 				<option value="file8">d7024e/utils/debug.go (100.0%)</option>
 				
@@ -200,7 +200,7 @@ func (bucket *bucket) AddContact(contact Contact) <span class="cov8" title="1">{
         for e := bucket.list.Front(); e != nil; e = e.Next() </span><span class="cov8" title="1">{
                 nodeID := e.Value.(Contact).ID
 
-                if (contact).ID.Equals(nodeID) </span><span class="cov0" title="0">{
+                if (contact).ID.Equals(nodeID) </span><span class="cov8" title="1">{
                         element = e
                 }</span>
         }
@@ -209,7 +209,7 @@ func (bucket *bucket) AddContact(contact Contact) <span class="cov8" title="1">{
                 if bucket.list.Len() &lt; bucketSize </span><span class="cov8" title="1">{
                         bucket.list.PushFront(contact)
                 }</span>
-        } else<span class="cov0" title="0"> {
+        } else<span class="cov8" title="1"> {
                 bucket.list.MoveToFront(element)
         }</span>
 }
@@ -229,7 +229,7 @@ func (bucket *bucket) GetContactAndCalcDistance(target *KademliaID) []Contact <s
 }
 
 // Len return the size of the bucket
-func (bucket *bucket) Len() int <span class="cov0" title="0">{
+func (bucket *bucket) Len() int <span class="cov8" title="1">{
         return bucket.list.Len()
 }</span>
 </pre>
@@ -370,7 +370,7 @@ type Kademlia struct {
 }
 
 // Create a new Kademlia instance.
-func NewKademlia(network *Network) *Kademlia <span class="cov0" title="0">{
+func NewKademlia(network *Network) *Kademlia <span class="cov8" title="1">{
         return &amp;Kademlia{network, make(map[string]string)}
 }</span>
 
@@ -394,7 +394,7 @@ func (kademlia *Kademlia) JoinNetwork(contact *Contact) <span class="cov0" title
 }
 
 // Lookup a contact by performing a node lookup.
-func (kademlia *Kademlia) LookupContact(target *KademliaID) <span class="cov0" title="0">{
+func (kademlia *Kademlia) LookupContact(target *KademliaID) <span class="cov8" title="1">{
         utils.Log(1, "Looking up contact %v", target)
 
         closestContacts, _ := kademlia.nodeLookup(target, FIND_NODE)
@@ -406,7 +406,7 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) <span class="cov0" t
 }
 
 // Lookup data on the network by performing a node lookup. Returns the data.
-func (kademlia *Kademlia) LookupData(hash string) []byte <span class="cov0" title="0">{
+func (kademlia *Kademlia) LookupData(hash string) []byte <span class="cov8" title="1">{
         utils.Log(1, "Looking up data for hash %v", hash)
 
         closestContactsWithoutValue, dataResult := kademlia.nodeLookup(NewKademliaID(hash), FIND_VALUE)
@@ -423,11 +423,11 @@ func (kademlia *Kademlia) LookupData(hash string) []byte <span class="cov0" titl
                 kademlia.network.SendStoreMessage(NewKademliaID(hash), dataResult, &amp;closestContactsWithoutValue[0], NewRandomKademliaID())</span>
         }
 
-        <span class="cov0" title="0">return dataResult</span>
+        <span class="cov8" title="1">return dataResult</span>
 }
 
 // Store data on the network by performing a node lookup and then storing the data on the closest contacts. Returns the hash of the data.
-func (kademlia *Kademlia) Store(data []byte) string <span class="cov0" title="0">{
+func (kademlia *Kademlia) Store(data []byte) string <span class="cov8" title="1">{
         utils.Log(1, "Storing data %v", data)
 
         hash := utils.Hash(data)
@@ -441,11 +441,11 @@ func (kademlia *Kademlia) Store(data []byte) string <span class="cov0" title="0"
                 utils.Log(1, "%v, %v", contact.Address, contact.ID)
         }</span>
 
-        <span class="cov0" title="0">return hash</span>
+        <span class="cov8" title="1">return hash</span>
 }
 
 // Perform a node lookup on the network.
-func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Contact, []byte) <span class="cov0" title="0">{
+func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Contact, []byte) <span class="cov8" title="1">{
 
         var data []byte
         var closerFound chan bool
@@ -460,13 +460,13 @@ func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Conta
         }</span>
 
         // Create a list of nodes that have already been contacted.
-        <span class="cov0" title="0">contactedNodes := ContactCandidates{make([]Contact, 0)}
+        <span class="cov8" title="1">contactedNodes := ContactCandidates{make([]Contact, 0)}
 
         // Create a list of nodes that have responded but not returned a value.
         respondedNodesWithoutValue := ContactCandidates{make([]Contact, 0)}
 
 OUTER_LOOP:
-        for </span><span class="cov0" title="0">{
+        for </span><span class="cov8" title="1">{
                 var iterativeSync sync.WaitGroup
 
                 closerFound = make(chan bool, kademlia.network.alpha)
@@ -481,10 +481,10 @@ OUTER_LOOP:
                                 allNodesContacted = false
                         }</span>
                 }
-                <span class="cov0" title="0">shortListMutex.RUnlock()
+                <span class="cov8" title="1">shortListMutex.RUnlock()
 
                 // Terminate when all nodes have been contacted.
-                if allNodesContacted </span><span class="cov0" title="0">{
+                if allNodesContacted </span><span class="cov8" title="1">{
                         break</span>
                 }
 
@@ -568,7 +568,7 @@ OUTER_LOOP:
                 }
         }
 
-        <span class="cov0" title="0">return shortList.contacts, data</span>
+        <span class="cov8" title="1">return shortList.contacts, data</span>
 }
 
 // Wait for a response from a node. If no response is received within 10 seconds, remove the node from the short list.
@@ -589,8 +589,8 @@ func (kademlia *Kademlia) waitForResponse(iterWait *sync.WaitGroup, status chan 
 
         // If response contains stored data, terminate and return it to the caller
         <span class="cov0" title="0">if response["type"] == FIND_VALUE_RESPONSE </span><span class="cov0" title="0">{
+                utils.Log(1, "waitForResponse: got value from node: %s", node.Address)
                 data &lt;- []byte(response["data"])
-                //dataWait.Done()
                 iterWait.Done()
                 return
         }</span>
@@ -639,18 +639,18 @@ func (kademlia *Kademlia) waitForResponse(iterWait *sync.WaitGroup, status chan 
 }
 
 // Update the short list with new contacts.
-func updateShortList(shortList *ContactCandidates, newContacts []Contact, k int) bool <span class="cov0" title="0">{
+func updateShortList(shortList *ContactCandidates, newContacts []Contact, k int) bool <span class="cov8" title="1">{
         // Filter out nodes that are already in shortList
         nodesReplaced := false
-        for _, newNode := range newContacts </span><span class="cov0" title="0">{
+        for _, newNode := range newContacts </span><span class="cov8" title="1">{
                 if Contains(shortList.contacts, newNode) </span><span class="cov0" title="0">{
                         continue</span>
                 }
 
                 // If shortList contains less than k nodes, nodes are freely inserted into the state until it contains k nodes.
-                <span class="cov0" title="0">if shortList.Len() &lt; k </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if shortList.Len() &lt; k </span><span class="cov8" title="1">{
                         shortList.Append([]Contact{newNode})
-                }</span> else<span class="cov0" title="0"> {
+                }</span> else<span class="cov8" title="1"> {
                         // shortList already contains k elements, replace the node furthest away with the new node if it is closer than the closest node in shortList
                         shortList.Sort()
                         if newNode.Less(&amp;shortList.contacts[0]) </span><span class="cov0" title="0">{
@@ -659,19 +659,19 @@ func updateShortList(shortList *ContactCandidates, newContacts []Contact, k int)
                         }</span>
                 }
         }
-        <span class="cov0" title="0">return nodesReplaced</span>
+        <span class="cov8" title="1">return nodesReplaced</span>
 }
 
 // Wait for the fastest response from a node.
-func waitForFastest(wg *sync.WaitGroup, ch chan []byte) (data []byte) <span class="cov0" title="0">{
+func waitForFastest(wg *sync.WaitGroup, ch chan []byte) (data []byte) <span class="cov8" title="1">{
         done := make(chan struct{})
         var lock = &amp;sync.Mutex{}
         closed := false
 
-        go func(group *sync.WaitGroup) </span><span class="cov0" title="0">{
+        go func(group *sync.WaitGroup) </span><span class="cov8" title="1">{
                 group.Wait()
                 lock.Lock()
-                if closed </span><span class="cov0" title="0">{
+                if closed </span><span class="cov8" title="1">{
                         lock.Unlock()
                         return
                 }</span>
@@ -680,19 +680,19 @@ func waitForFastest(wg *sync.WaitGroup, ch chan []byte) (data []byte) <span clas
                 lock.Unlock()</span>
         }(wg)
 
-        <span class="cov0" title="0">go func(channel chan []byte) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">go func(channel chan []byte) </span><span class="cov8" title="1">{
                 data = &lt;-channel
                 lock.Lock()
                 if closed </span><span class="cov0" title="0">{
                         lock.Unlock()
                         return
                 }</span>
-                <span class="cov0" title="0">close(done)
+                <span class="cov8" title="1">close(done)
                 closed = true
                 lock.Unlock()</span>
         }(ch)
 
-        <span class="cov0" title="0">&lt;-done
+        <span class="cov8" title="1">&lt;-done
         return data</span>
 }
 </pre>
@@ -781,6 +781,7 @@ import (
 
 // Mutex
 var mComs sync.RWMutex
+var mRoutingtable sync.RWMutex
 
 // Defines the different message types sent over the network.
 const (
@@ -800,11 +801,12 @@ type Network struct {
 
         k     int
         alpha int
+        ttl   time.Duration
 }
 
 // Create a new Network instance.
-func NewNetwork(rt *RoutingTable, k int, alpha int) *Network <span class="cov0" title="0">{
-        return &amp;Network{rt, &amp;Storage{make(map[string][]byte)}, make(map[string]chan map[string]string), k, alpha}
+func NewNetwork(rt *RoutingTable, k int, alpha int, ttl time.Duration) *Network <span class="cov8" title="1">{
+        return &amp;Network{rt, NewStorage(ttl), make(map[string]chan map[string]string), k, alpha, ttl}
 }</span>
 
 // Listens for incoming messages on a specified port.
@@ -875,20 +877,22 @@ func (network *Network) Listen(ip string, port int) <span class="cov0" title="0"
                                 network.sendMessage(contact.Address, data)</span>
 
                         case STORE:<span class="cov0" title="0">
-                                network.storage.StoreData(values["key"], []byte(values["data"]))</span>
+                                network.storage.StoreData(values["key"], []byte(values["data"]), network.ttl)</span>
 
                         default:<span class="cov0" title="0">
                                 network.TransmitResponse(NewKademliaID(values["rpc_id"]), values)</span>
                         }
 
                         // Update routing table with sender
-                        <span class="cov0" title="0">network.rt.AddContact(contact)</span>
+                        <span class="cov0" title="0">mRoutingtable.Lock()
+                        network.rt.AddContact(contact)
+                        mRoutingtable.Unlock()</span>
                 }()
         }
 }
 
 // Sends a ping message to contact.
-func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) <span class="cov0" title="0">{
+func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) <span class="cov8" title="1">{
         // Create a map to hold the values for the Ping message
         values := make(map[string]string)
         values["rpc_id"] = rpcID.String()
@@ -902,12 +906,12 @@ func (network *Network) SendPingMessage(contact *Contact, rpcID *KademliaID) <sp
                 return
         }</span>
 
-        <span class="cov0" title="0">utils.Log(1, "Sending %s message to %s", PING, contact.Address)
+        <span class="cov8" title="1">utils.Log(1, "Sending %s message to %s", PING, contact.Address)
         network.sendMessage(contact.Address, data)</span>
 }
 
 // Sends a pong message to contact.
-func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) <span class="cov0" title="0">{
+func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) <span class="cov8" title="1">{
         // Create a map to hold the values for the Ping message
         values := make(map[string]string)
         values["rpc_id"] = rpcID.String()
@@ -921,12 +925,12 @@ func (network *Network) SendPongMessage(contact *Contact, rpcID *KademliaID) <sp
                 return
         }</span>
 
-        <span class="cov0" title="0">utils.Log(1, "Sending %s message to %s", PONG, contact.Address)
+        <span class="cov8" title="1">utils.Log(1, "Sending %s message to %s", PONG, contact.Address)
         network.sendMessage(contact.Address, data)</span>
 }
 
 // Sends a find node message to contact.
-func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact, rpcID *KademliaID) <span class="cov0" title="0">{
+func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact, rpcID *KademliaID) <span class="cov8" title="1">{
         // Create a map to hold the values for the FindContact message
         values := make(map[string]string)
         values["rpc_id"] = rpcID.String()
@@ -943,12 +947,12 @@ func (network *Network) SendFindContactMessage(id *KademliaID, contact *Contact,
         }</span>
 
         // Send message
-        <span class="cov0" title="0">utils.Log(1, "Sending %s message to %s", FIND_NODE, contact.Address)
+        <span class="cov8" title="1">utils.Log(1, "Sending %s message to %s", FIND_NODE, contact.Address)
         network.sendMessage(contact.Address, data)</span>
 }
 
 // Sends a find data message to contact.
-func (network *Network) SendFindDataMessage(key *KademliaID, contact *Contact, rpcID *KademliaID) <span class="cov0" title="0">{
+func (network *Network) SendFindDataMessage(key *KademliaID, contact *Contact, rpcID *KademliaID) <span class="cov8" title="1">{
         // Create a map to hold the values for the FindData message
         values := make(map[string]string)
         values["rpc_id"] = rpcID.String()
@@ -965,12 +969,12 @@ func (network *Network) SendFindDataMessage(key *KademliaID, contact *Contact, r
         }</span>
 
         // Send message
-        <span class="cov0" title="0">utils.Log(1, "Sending %s message to %s", FIND_VALUE, contact.Address)
+        <span class="cov8" title="1">utils.Log(1, "Sending %s message to %s", FIND_VALUE, contact.Address)
         network.sendMessage(contact.Address, data)</span>
 }
 
 // Sends a store message to contact.
-func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *Contact, rpcID *KademliaID) <span class="cov0" title="0">{
+func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *Contact, rpcID *KademliaID) <span class="cov8" title="1">{
         // Create a map to hold the values for the Store message
         values := make(map[string]string)
         values["rpc_id"] = rpcID.String()
@@ -988,18 +992,18 @@ func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *
         }</span>
 
         // Send message
-        <span class="cov0" title="0">utils.Log(1, "Sending %s message to %s", STORE, contact.Address)
+        <span class="cov8" title="1">utils.Log(1, "Sending %s message to %s", STORE, contact.Address)
         network.sendMessage(contact.Address, data)</span>
 }
 
 // Sends a find node response message to contact.
-func (network *Network) sendFindContactResponseMessage(values map[string]string, contact *Contact) <span class="cov0" title="0">{
+func (network *Network) sendFindContactResponseMessage(values map[string]string, contact *Contact) <span class="cov8" title="1">{
         contacts := ""
         for _, node := range network.rt.FindClosestContacts(NewKademliaID(values["key"]), network.k) </span><span class="cov0" title="0">{
                 contacts += node.String() + "\n"
         }</span>
 
-        <span class="cov0" title="0">response := make(map[string]string)
+        <span class="cov8" title="1">response := make(map[string]string)
         response["rpc_id"] = values["rpc_id"]
         response["sender_id"] = network.rt.me.ID.String()
         response["sender_address"] = network.rt.me.Address
@@ -1013,12 +1017,12 @@ func (network *Network) sendFindContactResponseMessage(values map[string]string,
                 return
         }</span>
 
-        <span class="cov0" title="0">utils.Log(1, "Sending %s message to %s", response["type"], values["sender_address"])
+        <span class="cov8" title="1">utils.Log(1, "Sending %s message to %s", response["type"], values["sender_address"])
         network.sendMessage(contact.Address, data)</span>
 }
 
 // Sends a message to address.
-func (network *Network) sendMessage(address string, data []byte) <span class="cov0" title="0">{
+func (network *Network) sendMessage(address string, data []byte) <span class="cov8" title="1">{
         // Create UDP connection
         conn, err := net.Dial("udp", address)
         if err != nil </span><span class="cov0" title="0">{
@@ -1026,24 +1030,24 @@ func (network *Network) sendMessage(address string, data []byte) <span class="co
         }</span>
 
         // Write data to address
-        <span class="cov0" title="0">_, err = conn.Write(data)
+        <span class="cov8" title="1">_, err = conn.Write(data)
         if err != nil </span><span class="cov0" title="0">{
                 fmt.Println("SendMessage: ", err)
         }</span>
 
         // Close connection
-        <span class="cov0" title="0">conn.Close()</span>
+        <span class="cov8" title="1">conn.Close()</span>
 }
 
 // Listens on a specified channel for set amount of time before timing out.
-func (network *Network) ListenWithTimeout(rpcID *KademliaID, sec int) (map[string]string, error) <span class="cov0" title="0">{
+func (network *Network) ListenWithTimeout(rpcID *KademliaID, sec int) (map[string]string, error) <span class="cov8" title="1">{
         network.CreateChannel(rpcID) // makes sure it exist
 
         select </span>{
-        case res := &lt;-network.coms[rpcID.String()]:<span class="cov0" title="0">
+        case res := &lt;-network.coms[rpcID.String()]:<span class="cov8" title="1">
                 return res, nil</span>
 
-        case &lt;-time.After(time.Duration(sec) * time.Second):<span class="cov0" title="0">
+        case &lt;-time.After(time.Duration(sec) * time.Second):<span class="cov8" title="1">
                 return nil, fmt.Errorf("timeout occured")</span>
 
         }
@@ -1055,25 +1059,25 @@ func (network *Network) TransmitResponse(rpcID *KademliaID, response map[string]
 }</span>
 
 // Creates channel for rpc id if a channel does not already exist.
-func (network *Network) CreateChannel(rpcID *KademliaID) chan map[string]string <span class="cov0" title="0">{
+func (network *Network) CreateChannel(rpcID *KademliaID) chan map[string]string <span class="cov8" title="1">{
         mComs.Lock()
         _, exist := network.coms[rpcID.String()]
-        if !exist </span><span class="cov0" title="0">{
+        if !exist </span><span class="cov8" title="1">{
                 network.coms[rpcID.String()] = make(chan map[string]string, 50)
         }</span>
-        <span class="cov0" title="0">mComs.Unlock()
+        <span class="cov8" title="1">mComs.Unlock()
 
         return network.coms[rpcID.String()]</span>
 }
 
 // Deletes channel for rpc id if it exists.
-func (network *Network) RemoveChannel(rpcID *KademliaID) <span class="cov0" title="0">{
+func (network *Network) RemoveChannel(rpcID *KademliaID) <span class="cov8" title="1">{
         mComs.Lock()
         _, exist := network.coms[rpcID.String()]
-        if exist </span><span class="cov0" title="0">{
+        if exist </span><span class="cov8" title="1">{
                 delete(network.coms, rpcID.String())
         }</span>
-        <span class="cov0" title="0">mComs.Unlock()</span>
+        <span class="cov8" title="1">mComs.Unlock()</span>
 }
 </pre>
 		
@@ -1114,7 +1118,7 @@ func (routingTable *RoutingTable) FindClosestContacts(target *KademliaID, count 
         candidates.Append(bucket.GetContactAndCalcDistance(target))
 
         for i := 1; (bucketIndex-i &gt;= 0 || bucketIndex+i &lt; IDLength*8) &amp;&amp; candidates.Len() &lt; count; i++ </span><span class="cov8" title="1">{
-                if bucketIndex-i &gt;= 0 </span><span class="cov0" title="0">{
+                if bucketIndex-i &gt;= 0 </span><span class="cov8" title="1">{
                         bucket = routingTable.buckets[bucketIndex-i]
                         candidates.Append(bucket.GetContactAndCalcDistance(target))
                 }</span>
@@ -1150,34 +1154,89 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int <span class
 		
 		<pre class="file" id="file7" style="display: none">package kademlia
 
-import "d7024e/utils"
+import (
+        "d7024e/utils"
+        "sync"
+        "time"
+)
 
 type Storage struct {
-        dataStore map[string][]byte
+        mu        sync.Mutex
+        dataStore map[string]struct {
+                Data []byte
+                TTL  time.Time
+        }
+        DefaultTTL time.Duration
 }
 
-// Stores data locally but does not overwrite any already defined key data pairs
-func (storage *Storage) StoreData(key string, data []byte) <span class="cov8" title="1">{
+// Initializes the Storage struct with a default TTL value
+func NewStorage(defaultTTL time.Duration) *Storage <span class="cov8" title="1">{
+        storage := &amp;Storage{
+                dataStore: make(map[string]struct {
+                        Data []byte
+                        TTL  time.Time
+                }),
+                DefaultTTL: defaultTTL,
+        }
 
-        _, exist := storage.dataStore[key]
-        if exist </span><span class="cov8" title="1">{
-                utils.Log(3, "Tried to store data %s with key %s but that key already stores data %s", string(data), key, storage.dataStore[key])
+        // Start a goroutine to periodically clean up expired objects
+        go storage.startCleanupTask()
+        return storage
+}</span>
+
+// Stores data locally but does not overwrite any already defined key data pairs
+func (storage *Storage) StoreData(key string, data []byte, ttl time.Duration) <span class="cov8" title="1">{
+        storage.mu.Lock()
+        defer storage.mu.Unlock()
+
+        existingData, exist := storage.dataStore[key]
+        if exist &amp;&amp; time.Now().Before(existingData.TTL) </span><span class="cov8" title="1">{
+                utils.Log(3, "Tried to store data %s with key %s but that key already stores data %s", string(data), key, existingData.Data)
                 return
         }</span>
 
-        <span class="cov8" title="1">utils.Log(1, "Successfully stored data %s with key %s", string(data), key)
-        storage.dataStore[key] = data</span>
+        <span class="cov8" title="1">expirationTime := time.Now().Add(ttl)
+        storage.dataStore[key] = struct {
+                Data []byte
+                TTL  time.Time
+        }{Data: data, TTL: expirationTime}
+
+        utils.Log(1, "Successfully stored data %s with key %s (TTL: %s)", string(data), key, expirationTime.String())</span>
 }
 
 // Tries to retrieve data and returns it together with the success of the fetch
 func (storage *Storage) FetchData(key string) ([]byte, bool) <span class="cov8" title="1">{
+        storage.mu.Lock()
+        defer storage.mu.Unlock()
 
-        _, exist := storage.dataStore[key]
-        if exist </span><span class="cov8" title="1">{
-                return storage.dataStore[key], true
+        existingData, exist := storage.dataStore[key]
+        if exist &amp;&amp; time.Now().Before(existingData.TTL) </span><span class="cov8" title="1">{
+                // Reset TTL since data object is requested
+                storage.dataStore[key] = struct {
+                        Data []byte
+                        TTL  time.Time
+                }{Data: existingData.Data, TTL: time.Now().Add(storage.DefaultTTL)}
+                return existingData.Data, true
         }</span>
 
-        <span class="cov8" title="1">return nil, false</span>
+        // Delete the data object if TTL has expired
+        <span class="cov8" title="1">delete(storage.dataStore, key)
+        return nil, false</span>
+}
+
+// Periodically checks and deletes expired objects from the data store
+func (storage *Storage) startCleanupTask() <span class="cov8" title="1">{
+        ticker := time.NewTicker(storage.DefaultTTL)
+        for range ticker.C </span><span class="cov0" title="0">{
+                storage.mu.Lock()
+                for key, data := range storage.dataStore </span><span class="cov0" title="0">{
+                        if time.Now().After(data.TTL) </span><span class="cov0" title="0">{
+                                utils.Log(2, "Deleting expired data with key %s", key)
+                                delete(storage.dataStore, key)
+                        }</span>
+                }
+                <span class="cov0" title="0">storage.mu.Unlock()</span>
+        }
 }
 </pre>
 		

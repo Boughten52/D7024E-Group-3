@@ -31,11 +31,12 @@ type Network struct {
 
 	k     int
 	alpha int
+	ttl   time.Duration
 }
 
 // Create a new Network instance.
-func NewNetwork(rt *RoutingTable, k int, alpha int) *Network {
-	return &Network{rt, &Storage{make(map[string][]byte)}, make(map[string]chan map[string]string), k, alpha}
+func NewNetwork(rt *RoutingTable, k int, alpha int, ttl time.Duration) *Network {
+	return &Network{rt, NewStorage(ttl), make(map[string]chan map[string]string), k, alpha, ttl}
 }
 
 // Listens for incoming messages on a specified port.
@@ -106,7 +107,7 @@ func (network *Network) Listen(ip string, port int) {
 				network.sendMessage(contact.Address, data)
 
 			case STORE:
-				network.storage.StoreData(values["key"], []byte(values["data"]))
+				network.storage.StoreData(values["key"], []byte(values["data"]), network.ttl)
 
 			default:
 				network.TransmitResponse(NewKademliaID(values["rpc_id"]), values)

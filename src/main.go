@@ -7,11 +7,13 @@ import (
 	"d7024e/utils"
 	"fmt"
 	"sync"
+	"time"
 )
 
 var bootstrap = kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "172.20.0.10:80")
 var k = 20
 var alpha = 3
+var ttl = time.Second * 60
 var port = 80
 
 func main() {
@@ -32,7 +34,7 @@ func main() {
 	address := fmt.Sprintf("%s:%d", ip, port)
 	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), address)
 	rt := kademlia.NewRoutingTable(me)
-	net := kademlia.NewNetwork(rt, k, alpha)
+	net := kademlia.NewNetwork(rt, k, alpha, ttl)
 	kad := kademlia.NewKademlia(net)
 
 	// Start listening on network

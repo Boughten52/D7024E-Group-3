@@ -8,7 +8,7 @@ import (
 func TestSendMessage(t *testing.T) {
 	me := NewContact(NewRandomKademliaID(), "172.20.0.10:80")
 	rt := NewRoutingTable(me)
-	net := NewNetwork(rt, 20, 3, time.Second*60)
+	net := NewNetwork(rt, 20, 3, time.Second*60, time.Second*30)
 	contact := NewContact(NewRandomKademliaID(), "172.20.0.10:80")
 	values := make(map[string]string)
 	values["rpc_id"] = NewRandomKademliaID().String()
@@ -23,13 +23,14 @@ func TestSendMessage(t *testing.T) {
 	net.SendFindContactMessage(NewRandomKademliaID(), &contact, NewRandomKademliaID())
 	net.SendFindDataMessage(NewRandomKademliaID(), &contact, NewRandomKademliaID())
 	net.SendStoreMessage(NewRandomKademliaID(), []byte("hello world"), &contact, NewRandomKademliaID())
+	net.SendRefreshMessage(NewRandomKademliaID(), &contact, NewRandomKademliaID())
 	net.sendFindContactResponseMessage(values, &contact)
 }
 
 func TestComs(t *testing.T) {
 	me := NewContact(NewRandomKademliaID(), "172.20.0.10:80")
 	rt := NewRoutingTable(me)
-	net := NewNetwork(rt, 20, 3, time.Second*60)
+	net := NewNetwork(rt, 20, 3, time.Second*60, time.Second*30)
 	rpc := NewRandomKademliaID()
 
 	values := make(map[string]string)

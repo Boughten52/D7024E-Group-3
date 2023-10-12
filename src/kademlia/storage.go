@@ -70,6 +70,22 @@ func (storage *Storage) FetchData(key string) ([]byte, bool) {
 	return nil, false
 }
 
+// Refreshes the TTL for a data object if it exists and has not expired. Returns true if the TTL was refreshed.
+func (storage *Storage) RefreshDataTTL(key string, ttl time.Duration) bool {
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
+
+	if storedData, exists := storage.dataStore[key]; exists && time.Now().Before(storedData.TTL) {
+		// Reset TTL for the data object
+		storage.dataStore[key] = struct {
+			Data []byte
+			TTL  time.Time
+		}{Data: storedData.Data, TTL: time.Now().Add(ttl)}
+		return true
+	}
+	return false
+}
+
 // Periodically checks and deletes expired objects from the data store
 func (storage *Storage) startCleanupTask() {
 	ticker := time.NewTicker(storage.DefaultTTL)

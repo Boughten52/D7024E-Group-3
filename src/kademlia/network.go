@@ -22,6 +22,7 @@ const (
 	FIND_NODE_RESPONSE  string = "find_node_response"
 	FIND_VALUE_RESPONSE string = "find_value_response"
 	STORE               string = "store"
+	REFRESH             string = "refresh"
 )
 
 type Network struct {
@@ -29,14 +30,15 @@ type Network struct {
 	storage *Storage
 	coms    map[string]chan map[string]string
 
-	k     int
-	alpha int
-	ttl   time.Duration
+	k               int
+	alpha           int
+	ttl             time.Duration
+	refreshInterval time.Duration
 }
 
 // Create a new Network instance.
-func NewNetwork(rt *RoutingTable, k int, alpha int, ttl time.Duration) *Network {
-	return &Network{rt, NewStorage(ttl), make(map[string]chan map[string]string), k, alpha, ttl}
+func NewNetwork(rt *RoutingTable, k int, alpha int, ttl time.Duration, refreshInterval time.Duration) *Network {
+	return &Network{rt, NewStorage(ttl), make(map[string]chan map[string]string), k, alpha, ttl, refreshInterval}
 }
 
 // Listens for incoming messages on a specified port.
@@ -108,6 +110,14 @@ func (network *Network) Listen(ip string, port int) {
 
 			case STORE:
 				network.storage.StoreData(values["key"], []byte(values["data"]), network.ttl)
+
+			case REFRESH:
+				// Refresh the TTL of the data object
+				wasRefreshed := network.storage.RefreshDataTTL(values["key"], network.ttl)
+
+				if wasRefreshed {
+					utils.Log(3, "Data was refreshed with key %s", values["key"])
+				}
 
 			default:
 				network.TransmitResponse(NewKademliaID(values["rpc_id"]), values)
@@ -223,6 +233,28 @@ func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *
 
 	// Send message
 	utils.Log(1, "Sending %s message to %s", STORE, contact.Address)
+	network.sendMessage(contact.Address, data)
+}
+
+// Sends a refresh message to contact.
+func (network *Network) SendRefreshMessage(key *KademliaID, contact *Contact, rpcID *KademliaID) {
+	// Create a map to hold the values for the Refresh message
+	values := make(map[string]string)
+	values["rpc_id"] = rpcID.String()
+	values["sender_id"] = network.rt.me.ID.String()
+	values["sender_address"] = network.rt.me.Address
+	values["key"] = key.String()
+	values["type"] = REFRESH
+
+	// Build message
+	data, err := protobuf.SerializeMessage(values)
+	if err != nil {
+		utils.LogError("SendRefreshMessage: could not build message (%s)", err)
+		return
+	}
+
+	// Send message
+	utils.Log(1, "Sending %s message to %s", REFRESH, contact.Address)
 	network.sendMessage(contact.Address, data)
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewKademlia(t *testing.T) {
-	network := NewNetwork(NewRoutingTable(NewContact(NewRandomKademliaID(), "172.20.0.10")), 20, 3, time.Second*60)
+	network := NewNetwork(NewRoutingTable(NewContact(NewRandomKademliaID(), "172.20.0.10")), 20, 3, time.Second*60, time.Second*30)
 	kademlia := NewKademlia(network)
 	if kademlia == nil {
 		t.Fatal("NewKademlia returned nil")
@@ -25,7 +25,7 @@ func TestLookupContact(t *testing.T) {
 	// Create a Kademlia instance
 	me := NewContact(NewRandomKademliaID(), "172.20.0.10")
 	rt := NewRoutingTable(me)
-	net := NewNetwork(rt, 20, 3, time.Second*60)
+	net := NewNetwork(rt, 20, 3, time.Second*60, time.Second*30)
 	kademlia := NewKademlia(net)
 
 	kademlia.LookupContact(NewRandomKademliaID())
@@ -35,7 +35,7 @@ func TestLookupData(t *testing.T) {
 	// Create a Kademlia instance
 	me := NewContact(NewRandomKademliaID(), "172.20.0.10")
 	rt := NewRoutingTable(me)
-	net := NewNetwork(rt, 20, 3, time.Second*60)
+	net := NewNetwork(rt, 20, 3, time.Second*60, time.Second*30)
 	kademlia := NewKademlia(net)
 
 	data := kademlia.LookupData("0123456789abcdef0123456789abcdef01234561")
@@ -48,7 +48,7 @@ func TestStore(t *testing.T) {
 	// Create a Kademlia instance
 	me := NewContact(NewRandomKademliaID(), "172.20.0.10")
 	rt := NewRoutingTable(me)
-	net := NewNetwork(rt, 20, 3, time.Second*60)
+	net := NewNetwork(rt, 20, 3, time.Second*60, time.Second*30)
 	kademlia := NewKademlia(net)
 
 	hash := kademlia.Store([]byte("hello world"))

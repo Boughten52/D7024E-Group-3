@@ -61,15 +61,15 @@
 				
 				<option value="file2">d7024e/kademlia/contact.go (100.0%)</option>
 				
-				<option value="file3">d7024e/kademlia/kademlia.go (34.1%)</option>
+				<option value="file3">d7024e/kademlia/kademlia.go (33.2%)</option>
 				
 				<option value="file4">d7024e/kademlia/kademliaid.go (95.5%)</option>
 				
-				<option value="file5">d7024e/kademlia/network.go (57.2%)</option>
+				<option value="file5">d7024e/kademlia/network.go (58.1%)</option>
 				
 				<option value="file6">d7024e/kademlia/routingtable.go (100.0%)</option>
 				
-				<option value="file7">d7024e/kademlia/storage.go (78.6%)</option>
+				<option value="file7">d7024e/kademlia/storage.go (82.4%)</option>
 				
 				<option value="file8">d7024e/utils/debug.go (100.0%)</option>
 				
@@ -365,13 +365,15 @@ var shortListMutex = &amp;sync.RWMutex{}
 var respondedNodesMutex = &amp;sync.RWMutex{}
 
 type Kademlia struct {
-        network   *Network
-        DataStore map[string]string
+        network       *Network
+        DataStore     map[string]string
+        ClosestPeers  map[string][]Contact
+        RefreshTicker *time.Ticker
 }
 
 // Create a new Kademlia instance.
 func NewKademlia(network *Network) *Kademlia <span class="cov8" title="1">{
-        return &amp;Kademlia{network, make(map[string]string)}
+        return &amp;Kademlia{network, make(map[string]string), make(map[string][]Contact), time.NewTicker(network.refreshInterval)}
 }</span>
 
 // Join the network by pinging the contact node and then performing a node lookup.
@@ -441,7 +443,32 @@ func (kademlia *Kademlia) Store(data []byte) string <span class="cov8" title="1"
                 utils.Log(1, "%v, %v", contact.Address, contact.ID)
         }</span>
 
-        <span class="cov8" title="1">return hash</span>
+        // Save closestContacts for this hash
+        <span class="cov8" title="1">kademlia.ClosestPeers[key.String()] = closestContacts
+
+        return hash</span>
+}
+
+// Start refresh routine for refreshing the closest peers to stored values
+func (kademlia *Kademlia) StartRefreshRoutine() <span class="cov0" title="0">{
+        go func() </span><span class="cov0" title="0">{
+                for range kademlia.RefreshTicker.C </span><span class="cov0" title="0">{
+                        kademlia.refreshClosestPeers()
+                }</span>
+        }()
+}
+
+// Refresh the closest peers to stored values.
+func (kademlia *Kademlia) refreshClosestPeers() <span class="cov0" title="0">{
+        for hash, contacts := range kademlia.ClosestPeers </span><span class="cov0" title="0">{
+                for _, contact := range contacts </span><span class="cov0" title="0">{
+                        go func(hash string, contact Contact) </span><span class="cov0" title="0">{
+                                // Use a goroutine to prevent blocking the loop
+                                // Implement SendRefreshMessage asynchronously
+                                kademlia.network.SendRefreshMessage(NewKademliaID(hash), &amp;contact, NewRandomKademliaID())
+                        }</span>(hash, contact)
+                }
+        }
 }
 
 // Perform a node lookup on the network.
@@ -792,6 +819,7 @@ const (
         FIND_NODE_RESPONSE  string = "find_node_response"
         FIND_VALUE_RESPONSE string = "find_value_response"
         STORE               string = "store"
+        REFRESH             string = "refresh"
 )
 
 type Network struct {
@@ -799,14 +827,15 @@ type Network struct {
         storage *Storage
         coms    map[string]chan map[string]string
 
-        k     int
-        alpha int
-        ttl   time.Duration
+        k               int
+        alpha           int
+        ttl             time.Duration
+        refreshInterval time.Duration
 }
 
 // Create a new Network instance.
-func NewNetwork(rt *RoutingTable, k int, alpha int, ttl time.Duration) *Network <span class="cov8" title="1">{
-        return &amp;Network{rt, NewStorage(ttl), make(map[string]chan map[string]string), k, alpha, ttl}
+func NewNetwork(rt *RoutingTable, k int, alpha int, ttl time.Duration, refreshInterval time.Duration) *Network <span class="cov8" title="1">{
+        return &amp;Network{rt, NewStorage(ttl), make(map[string]chan map[string]string), k, alpha, ttl, refreshInterval}
 }</span>
 
 // Listens for incoming messages on a specified port.
@@ -878,6 +907,14 @@ func (network *Network) Listen(ip string, port int) <span class="cov0" title="0"
 
                         case STORE:<span class="cov0" title="0">
                                 network.storage.StoreData(values["key"], []byte(values["data"]), network.ttl)</span>
+
+                        case REFRESH:<span class="cov0" title="0">
+                                // Refresh the TTL of the data object
+                                wasRefreshed := network.storage.RefreshDataTTL(values["key"], network.ttl)
+
+                                if wasRefreshed </span><span class="cov0" title="0">{
+                                        utils.Log(3, "Data was refreshed with key %s", values["key"])
+                                }</span>
 
                         default:<span class="cov0" title="0">
                                 network.TransmitResponse(NewKademliaID(values["rpc_id"]), values)</span>
@@ -993,6 +1030,28 @@ func (network *Network) SendStoreMessage(key *KademliaID, data []byte, contact *
 
         // Send message
         <span class="cov8" title="1">utils.Log(1, "Sending %s message to %s", STORE, contact.Address)
+        network.sendMessage(contact.Address, data)</span>
+}
+
+// Sends a refresh message to contact.
+func (network *Network) SendRefreshMessage(key *KademliaID, contact *Contact, rpcID *KademliaID) <span class="cov8" title="1">{
+        // Create a map to hold the values for the Refresh message
+        values := make(map[string]string)
+        values["rpc_id"] = rpcID.String()
+        values["sender_id"] = network.rt.me.ID.String()
+        values["sender_address"] = network.rt.me.Address
+        values["key"] = key.String()
+        values["type"] = REFRESH
+
+        // Build message
+        data, err := protobuf.SerializeMessage(values)
+        if err != nil </span><span class="cov0" title="0">{
+                utils.LogError("SendRefreshMessage: could not build message (%s)", err)
+                return
+        }</span>
+
+        // Send message
+        <span class="cov8" title="1">utils.Log(1, "Sending %s message to %s", REFRESH, contact.Address)
         network.sendMessage(contact.Address, data)</span>
 }
 
@@ -1222,6 +1281,22 @@ func (storage *Storage) FetchData(key string) ([]byte, bool) <span class="cov8" 
         // Delete the data object if TTL has expired
         <span class="cov8" title="1">delete(storage.dataStore, key)
         return nil, false</span>
+}
+
+// Refreshes the TTL for a data object if it exists and has not expired. Returns true if the TTL was refreshed.
+func (storage *Storage) RefreshDataTTL(key string, ttl time.Duration) bool <span class="cov8" title="1">{
+        storage.mu.Lock()
+        defer storage.mu.Unlock()
+
+        if storedData, exists := storage.dataStore[key]; exists &amp;&amp; time.Now().Before(storedData.TTL) </span><span class="cov8" title="1">{
+                // Reset TTL for the data object
+                storage.dataStore[key] = struct {
+                        Data []byte
+                        TTL  time.Time
+                }{Data: storedData.Data, TTL: time.Now().Add(ttl)}
+                return true
+        }</span>
+        <span class="cov8" title="1">return false</span>
 }
 
 // Periodically checks and deletes expired objects from the data store

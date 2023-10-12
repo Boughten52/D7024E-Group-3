@@ -11,13 +11,15 @@ var shortListMutex = &sync.RWMutex{}
 var respondedNodesMutex = &sync.RWMutex{}
 
 type Kademlia struct {
-	network   *Network
-	DataStore map[string]string
+	network       *Network
+	DataStore     map[string]string
+	ClosestPeers  map[string][]Contact
+	RefreshTicker *time.Ticker
 }
 
 // Create a new Kademlia instance.
 func NewKademlia(network *Network) *Kademlia {
-	return &Kademlia{network, make(map[string]string)}
+	return &Kademlia{network, make(map[string]string), make(map[string][]Contact), time.NewTicker(network.refreshInterval)}
 }
 
 // Join the network by pinging the contact node and then performing a node lookup.
@@ -87,7 +89,32 @@ func (kademlia *Kademlia) Store(data []byte) string {
 		utils.Log(1, "%v, %v", contact.Address, contact.ID)
 	}
 
+	// Save closestContacts for this hash
+	kademlia.ClosestPeers[key.String()] = closestContacts
+
 	return hash
+}
+
+// Start refresh routine for refreshing the closest peers to stored values
+func (kademlia *Kademlia) StartRefreshRoutine() {
+	go func() {
+		for range kademlia.RefreshTicker.C {
+			kademlia.refreshClosestPeers()
+		}
+	}()
+}
+
+// Refresh the closest peers to stored values.
+func (kademlia *Kademlia) refreshClosestPeers() {
+	for hash, contacts := range kademlia.ClosestPeers {
+		for _, contact := range contacts {
+			go func(hash string, contact Contact) {
+				// Use a goroutine to prevent blocking the loop
+				// Implement SendRefreshMessage asynchronously
+				kademlia.network.SendRefreshMessage(NewKademliaID(hash), &contact, NewRandomKademliaID())
+			}(hash, contact)
+		}
+	}
 }
 
 // Perform a node lookup on the network.

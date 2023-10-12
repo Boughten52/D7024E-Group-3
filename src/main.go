@@ -13,7 +13,8 @@ import (
 var bootstrap = kademlia.NewContact(kademlia.NewKademliaID("0000000000000000000000000000000000000000"), "172.20.0.10:80")
 var k = 20
 var alpha = 3
-var ttl = time.Second * 60
+var ttl = time.Second * 86430             // 24 hours and 30 seconds
+var refreshInterval = time.Second * 86400 // 24 hours
 var port = 80
 
 func main() {
@@ -34,8 +35,9 @@ func main() {
 	address := fmt.Sprintf("%s:%d", ip, port)
 	me := kademlia.NewContact(kademlia.NewRandomKademliaID(), address)
 	rt := kademlia.NewRoutingTable(me)
-	net := kademlia.NewNetwork(rt, k, alpha, ttl)
+	net := kademlia.NewNetwork(rt, k, alpha, ttl, refreshInterval)
 	kad := kademlia.NewKademlia(net)
+	kad.StartRefreshRoutine()
 
 	// Start listening on network
 	utils.Log(1, "Listening on %s:%d", ip, port)

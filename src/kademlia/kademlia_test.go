@@ -57,6 +57,36 @@ func TestStore(t *testing.T) {
 	}
 }
 
+func TestKademlia_Forget(t *testing.T) {
+	kad := &Kademlia{
+		ClosestPeers: make(map[string][]Contact),
+	}
+
+	// Add a sample hash to closest peers
+	hash := "0000000000000000000000000000000000000000"
+	key := NewKademliaID(hash)
+	contacts := []Contact{
+		NewContact(NewRandomKademliaID(), "address1"),
+		NewContact(NewRandomKademliaID(), "address2"),
+	}
+	kad.ClosestPeers[key.String()] = contacts
+
+	// Call Forget method to remove the hash
+	kad.Forget(hash)
+
+	// Check if the hash is removed from closest peers
+	if _, ok := kad.ClosestPeers[key.String()]; ok {
+		t.Errorf("Expected hash %s to be forgotten, but it was not", hash)
+	}
+
+	// Attempt to forget a non-existing hash
+	nonExistingHash := "1111111111111111111111111111111111111111"
+	kad.Forget(nonExistingHash)
+
+	// Check if no error occurred when trying to forget a non-existing hash
+	// The test passes if it reaches this point without panicking
+}
+
 func TestUpdateShortList(t *testing.T) {
 	target := NewKademliaID("0000000000000000000000000000000000000000")
 	id1 := NewKademliaID("1111111111111111111111111111111111111111")

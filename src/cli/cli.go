@@ -76,7 +76,12 @@ func (cli *CLI) get(hash string) {
 }
 
 func (cli *CLI) forget(hash string) {
-	// TODO: Implement
+	if len([]byte(hash)) != 40 {
+		fmt.Printf("Expected hash length of 20 but got %d", len([]byte(hash)))
+		return
+	}
+
+	cli.kademlia.Forget(hash)
 }
 
 // Handle exit command by exiting the program.

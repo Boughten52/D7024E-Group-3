@@ -117,6 +117,18 @@ func (kademlia *Kademlia) refreshClosestPeers() {
 	}
 }
 
+func (kademlia *Kademlia) Forget(hash string) {
+	key := NewKademliaID(hash)
+
+	if _, ok := kademlia.ClosestPeers[key.String()]; !ok {
+		utils.Log(1, "No closest peers found for hash %s", hash)
+		return
+	}
+
+	utils.Log(1, "Forgetting hash %s", hash)
+	delete(kademlia.ClosestPeers, key.String())
+}
+
 // Perform a node lookup on the network.
 func (kademlia *Kademlia) nodeLookup(target *KademliaID, opType string) ([]Contact, []byte) {
 

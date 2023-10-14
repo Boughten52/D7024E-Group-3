@@ -195,7 +195,7 @@ OUTER_LOOP:
 		contactedNodes.Append(alphaNodes.contacts)
 
 		// Loose parallelism
-		time.Sleep(5 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 
 		// Wait for a response from the alpha closest nodes in state.
 		data = waitForFastest(&iterativeSync, dataFound)
